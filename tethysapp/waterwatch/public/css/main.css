@@ -1,0 +1,35 @@
+#app-content-wrapper #app-content{
+    height: 100%;
+    /*padding-top: 60px;*/
+    /*padding-bottom: 50px;*/
+}
+
+#inner-app-content{
+    padding: 0;
+}
+
+#ts-plot-modal .modal-dialog {
+    position: absolute !important;
+    display: table; //This is important
+    width: auto;
+    min-width: 100%;
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
+    overflow-x: auto;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+}
+#ts-plot-modal .modal-body {
+  height: 100%;
+    widht:100%;
+  border-radius: 0;
+}
+
+.flex-container-row {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-around;
+    align-items: center;
+}

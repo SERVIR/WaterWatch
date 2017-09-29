@@ -1,0 +1,91 @@
+{% extends "waterwatch/base.html" %}
+{% load tethys_gizmos %}
+{% load staticfiles %}
+
+{% block styles %}
+{{ block.super }}
+<link rel="stylesheet" href="https://openlayers.org/en/v4.3.4/css/ol.css" type="text/css">
+{% endblock %}
+
+{% block global_scripts %}
+{{block.super}}
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<script src="http://code.highcharts.com/modules/exporting.js"></script>
+<script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
+  <script src="https://openlayers.org/en/v4.3.4/build/ol.js" type="text/javascript"></script>
+{% endblock %}
+
+
+
+{% block header_buttons %}
+  <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="Help">
+    <a data-toggle="modal" data-target="#help-modal"><span class="glyphicon glyphicon-question-sign"></span></a>
+  </div>
+{% endblock %}
+
+{% block app_content %}
+<style>
+  .map{
+    width:100%;
+    height:100%;
+  }
+</style>
+<div id="map" class="map"></div>
+
+<div id="layers" name="layers" data-ponds-mapid="{{ponds_mapid}}" data-ponds-token="{{ponds_token}}" style="display:none;">
+
+{% endblock %}
+
+{# Use the after_app_content block for modals #}
+{% block after_app_content %}
+  <!-- Help Modal -->
+  <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="help-modal-label">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h5 class="modal-title" id="help-modal-label">Help Modal</h5>
+        </div>
+        <div class="modal-body">
+          <p>Under Construction..........</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--Show TS Plot -->
+<div class="modal fade" id="ts-plot-modal" tabindex="-1" role="dialog" aria-labelledby="ts-plot-modal-label">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h2 class="modal-title" id="vic-plot-modal-label">Timeseries Plot</h2>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <div class="chart-wrapper">
+                        <div class="chart-inner">
+                            <div align="center" class="flex-container-row"><img id="view-file-loading" class="view-file hidden" src="/static/waterwatch/images/loader.gif" /></div>
+                            <div id="plotter" name="plotter" style="height:100%;width:100%" ></div>
+                        </div>
+                    </div>
+                </div>
+                <br/>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block app_actions %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="{% static 'waterwatch/js/map.js' %}" type="text/javascript"></script>
+{% endblock %}
