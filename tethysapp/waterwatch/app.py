@@ -8,7 +8,7 @@ class Waterwatch(TethysAppBase):
 
     name = 'Ferlo Ephemeral Water Body Monitoring Dashboard'
     index = 'waterwatch:home'
-    icon = 'waterwatch/images/icon.gif'
+    icon = 'waterwatch/images/logo.png'
     package = 'waterwatch'
     root_url = 'waterwatch'
     color = '#2c3e50'
@@ -33,6 +33,11 @@ class Waterwatch(TethysAppBase):
                 name='timeseries',
                 url='waterwatch/timeseries',
                 controller='waterwatch.ajax_controllers.timeseries'
+            ),
+            UrlMap(
+                name='mnwdi',
+                url='waterwatch/mndwi',
+                controller='waterwatch.ajax_controllers.mndwi'
             ),
         )
 

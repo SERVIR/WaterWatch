@@ -124,9 +124,18 @@ def makeTimeSeries(feature):
     indexCollection = collection.map(reducerMapping)
 
     indexSeries = indexCollection.aggregate_array('indexVal').getInfo()
-    print indexSeries
 
     return indexSeries
+
+def getClickedImage(xValue,yValue,feature):
+
+    equalDate = ee.Date(int(xValue))
+
+    image = ee.Image(waterCollection.select('mndwi').filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(1,'day')).first())
+
+    imageId = image.getMapId({'min':-0.3,'max':0.3,'palette':'d3d3d3,84adff,9698d1,0000cc'})
+
+    return imageId
 
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
@@ -166,15 +175,34 @@ mndwiImg = mndwiCollection.median().clip(studyArea)
 def initLayers():
     return pondsImgID
 
-def checkFeature(lon,lat):
 
-    point = ee.Geometry.Point(float(lon),float(lat))
+def filterPond(lon, lat):
+    point = ee.Geometry.Point(float(lon), float(lat))
     sampledPoint = ee.Feature(ponds.filterBounds(point).first())
 
     computedValue = sampledPoint.getInfo()['properties']['uniqID']
 
     selPond = ponds.filter(ee.Filter.eq('uniqID', computedValue))
 
-    ts_values = makeTimeSeries(selPond)
+    return selPond
 
-    return ts_values
+
+
+def checkFeature(lon,lat):
+
+    selPond = filterPond(lon,lat)
+
+    ts_values = makeTimeSeries(selPond)
+    coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
+    return ts_values,coordinates
+
+def getMNDWI(lon,lat,xValue,yValue):
+
+    selPond = filterPond(lon, lat)
+
+    mndwiImg = getClickedImage(xValue,yValue,selPond)
+
+    return mndwiImg
+
+
+
