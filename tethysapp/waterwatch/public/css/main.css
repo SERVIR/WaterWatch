@@ -26,7 +26,21 @@ width: auto;
     width:100%;
     border-radius: 0;
 }
-
+.map-view-legend {
+    bottom: 10px;
+    /*right: 20px;*/
+    width: 170px;
+    max-height: 90%;
+    overflow-y: auto;
+    margin: 5px;
+    color:white;
+    background: #286090;
+    border: 1px #ddd solid;
+    z-index: 999;
+}
+.map-view-legend:hover {
+  background: #3b4790;
+}
 .flex-container-row {
     display: flex;
     flex-flow: row wrap;
