@@ -232,7 +232,7 @@ var LIBRARY_OBJECT = (function() {
     };
 
     generate_chart = function(data,lat,lon){
-        $("#plotter").highcharts({
+        Highcharts.stockChart('plotter',{
             chart: {
                 type:'line',
                 zoomType: 'x'
@@ -256,7 +256,7 @@ var LIBRARY_OBJECT = (function() {
                                 xhr.done(function(data) {
                                     if("success" in data) {
                                         map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
-                                        $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+lat+'</td></tr><tr><th>Longitude</th><td>'+lon+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
+                                        $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+lat.toFixed(6)+'</td></tr><tr><th>Longitude</th><td>'+lon.toFixed(6)+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                         $("#reset").removeClass('hidden');
                                     }else{
                                         $('.info').html('<b>Error processing the request. Please be sure to click on a feature.'+data.error+'</b>');

@@ -133,7 +133,11 @@ def makeTimeSeries(feature):
 
     indexSeries = indexCollection.aggregate_array('indexVal').getInfo()
 
-    return indexSeries
+    formattedSeries = [[x[0],round(float(x[1]),3)] for x in indexSeries]
+
+    days_with_data = [[datetime.datetime.fromtimestamp((int(x[0]) / 1000)).strftime('%Y %B %d'),round(float(x[1]),3)] for x in indexSeries if x[1] > 0 ]
+
+    return sorted(formattedSeries)
 
 def getClickedImage(xValue,yValue,feature):
 
