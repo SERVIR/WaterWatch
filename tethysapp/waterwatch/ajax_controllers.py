@@ -1,6 +1,7 @@
 from utilities import *
 import json
 from django.http import JsonResponse
+import datetime
 
 def timeseries(request):
 
@@ -12,6 +13,7 @@ def timeseries(request):
         info = request.POST
         lat = info.get('lat')
         lon = info.get('lon')
+
         try:
             ts_vals,coordinates = checkFeature(lon,lat)
             return_obj["values"] = ts_vals
@@ -31,16 +33,17 @@ def mndwi(request):
         info = request.POST
         x_val = info.get('xValue')
         y_val = info.get('yValue')
+        clicked_date = datetime.datetime.fromtimestamp((int(x_val) / 1000)).strftime('%Y %B %d')
+
         lat = info.get('lat')
         lon = info.get('lon')
 
-        print x_val,y_val,lon,lat
-
         try:
-            mndwi_img = getMNDWI(lon,lat,x_val,y_val)
-            print mndwi_img["mapid"],mndwi_img["token"]
+            mndwi_img,properties = getMNDWI(lon,lat,x_val,y_val)
             return_obj["water_mapid"] = mndwi_img["mapid"]
             return_obj["water_token"] = mndwi_img["token"]
+            return_obj["date"] = clicked_date
+            return_obj["cloud_cover"] = properties["CLOUD_COVER"]
             return_obj["success"] = "success"
 
         except Exception as e:

@@ -34,30 +34,34 @@
 </style>
 
 <div id="map" class="map col-md-7">
-   <div id="map-view-legend" class="map-view-legend ol-unselectable ol-control">
-
-        <div>
-            <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
-                 xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="20" stroke="red" fill="red" stroke-width="2"/>
-            </svg>
-            < 25% Water Coverage
-        </div>
-        <div>
-            <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
-                 xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="20" stroke="yellow" fill="yellow" stroke-width="2"/>
-            </svg>
-            25% to 75% Water Coverage
-        </div>
-        <div>
-            <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
-                 xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="20" stroke="green" fill="green" stroke-width="2"/>
-            </svg>
-            > 25% Water Coverage
-        </div>
+  <div id="map-view-legend" class="map-view-legend ol-unselectable ol-control">
+    <div>
+      <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
+           xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="20" stroke="red" fill="red" stroke-width="2"/>
+      </svg>
+      < 25% Water Coverage
     </div>
+    <div>
+      <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
+           xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="20" stroke="yellow" fill="yellow" stroke-width="2"/>
+      </svg>
+      25% to 75% Water Coverage
+    </div>
+    <div>
+      <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
+           xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="20" stroke="green" fill="green" stroke-width="2"/>
+      </svg>
+      > 25% Water Coverage
+    </div>
+  </div>
+  <div id="gee-attr" class="gee-attr ol-unselectable ol-control">
+    <div align="center">
+      <p style="color:white;"> Powered by <img src="http://servir-rlcms.appspot.com/static/img/google.png" width="15%"> Earth Engine <img src="http://servir-rlcms.appspot.com/static/img/gee.png" width="12%"> </p>
+    </div>
+  </div>
 </div>
 
 <div id="graph" class="col-md-5">
@@ -72,9 +76,14 @@
       </div>
     </div>
   </div>
+  <br>
+  <table id="meta-table" class="table table-responsive table-condensed table-hover">
+  </table>
+  <br>
   <div id="info" class="hidden info"></div>
   <div id="zoomlevel"></div>
   <button type="button" name="reset" id="reset" class="btn btn-primary hidden" onclick="window.location.reload();">Reset Map</button>
+
 </div>
 
 
@@ -95,8 +104,16 @@
           <p>Under Construction..........</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+            <div align="center" id="logos">
+              <div class="logo-image"><a href="http://www.usaid.gov/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/usaid.png"></a></div>
+              <div class="logo-image"><a href="http://appliedsciences.nasa.gov/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/nasa.png"></a></div>
+              <div class="logo-image"><a href="http://www.cilss.bf/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/cilss.png"></a></div>
+              <div class="logo-image"><a href="http://www.rcmrd.org/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/rcmrd.png"></a></div>
+              <div class="logo-image"><a href="http://www.icimod.org/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/icimod.png"></a></div>
+              <div class="logo-image"><a href="http://www.adpc.net/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/adpc.png"></a></div>
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
@@ -116,6 +133,7 @@
           </div>
           <br/>
         </div>
+
       </div>
     </div>
   </div>

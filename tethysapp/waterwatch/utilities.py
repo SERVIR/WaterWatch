@@ -1,8 +1,10 @@
 import ee
+from ee.ee_exception import EEException
 import requests
 import json
 import numpy as np
 import datetime,time
+
 try:
     ee.Initialize()
 except EEException as e:
@@ -63,8 +65,6 @@ def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
         zScore = img.select(shadowSumBands).subtract(irMean).divide(irStdDev)
         irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum())
         TDOMMask = zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2).And(irSum.lt(shadowSumThresh)).Not()
-        # not ()
-        # zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2). and (irSum.lt(shadowSumThresh)).not ()
         TDOMMask = TDOMMask.focal_min(dilatePixels)
         return img.addBands(TDOMMask.rename(['TDOMMask']))
 
@@ -81,7 +81,7 @@ def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
 def calcWaterIndex(img):
     mndwi = img.normalizedDifference(['green', 'swir1']).rename(['mndwi'])
 
-    return mndwi.set("system:time_start", img.get("system:time_start"))
+    return mndwi.copyProperties(img, ["system:time_start","CLOUD_COVER"])
 
 
 def waterClassifier(img):
@@ -92,7 +92,7 @@ def waterClassifier(img):
     water = ee.Image(0).where(mask, img.select('mndwi').gt(THRESHOLD))
 
     result = img.addBands(water.rename(['water']))
-    return result.set("system:time_start", img.get("system:time_start"))
+    return result.copyProperties(img, ["system:time_start","CLOUD_COVER"])
 
 
 def pondClassifier(shape):
@@ -139,11 +139,13 @@ def getClickedImage(xValue,yValue,feature):
 
     equalDate = ee.Date(int(xValue))
 
-    image = ee.Image(waterCollection.select('mndwi').filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(1,'day')).first())
+    water_image = ee.Image(waterCollection.select('mndwi').filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(1,'day')).first())
 
-    imageId = image.getMapId({'min':-0.3,'max':0.3,'palette':'d3d3d3,84adff,9698d1,0000cc'})
+    water_imageid = water_image.getMapId({'min':-0.3,'max':0.3,'palette':'d3d3d3,84adff,9698d1,0000cc'})
 
-    return imageId
+    properties =  water_image.getInfo()['properties']
+
+    return water_imageid,properties
 
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
@@ -194,8 +196,6 @@ def filterPond(lon, lat):
 
     return selPond
 
-
-
 def checkFeature(lon,lat):
 
     selPond = filterPond(lon,lat)
@@ -208,9 +208,9 @@ def getMNDWI(lon,lat,xValue,yValue):
 
     selPond = filterPond(lon, lat)
 
-    mndwiImg = getClickedImage(xValue,yValue,selPond)
+    mndwi_img = getClickedImage(xValue,yValue,selPond)
 
-    return mndwiImg
+    return mndwi_img
 
 
 

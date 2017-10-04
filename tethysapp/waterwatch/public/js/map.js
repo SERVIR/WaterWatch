@@ -17,7 +17,8 @@ var LIBRARY_OBJECT = (function() {
     /************************************************************************
      *                      MODULE LEVEL / GLOBAL VARIABLES
      *************************************************************************/
-    var current_layer,
+    var base_map2,
+        current_layer,
         layers,
         map,
         ponds_mapid,
@@ -66,6 +67,14 @@ var LIBRARY_OBJECT = (function() {
             })
         });
 
+        base_map2 = new ol.layer.Tile({
+            source: new ol.source.BingMaps({
+                key: '5TC0yID7CYaqv3nVQLKe~xWVt4aXWMJq2Ed72cO4xsA~ApdeyQwHyH_btMjQS1NJ7OHKY8BK-W-EMQMrIavoQUMYXeZIQOUURnKGBOC7UCt4',
+                imagerySet: 'AerialWithLabels' // Options 'Aerial', 'AerialWithLabels', 'Road'
+            })
+        });
+
+
 
         var west_africa = new ol.Feature(new ol.geom.Polygon([[[-2025275.5014440303,1364859.5770601076],[-1247452.3016140766,1364859.5770601076],[-1247452.3016140766,1898084.286377496],[-2025275.5014440303,1898084.286377496],[-2025275.5014440303,1364859.5770601076]]]));
 
@@ -97,7 +106,13 @@ var LIBRARY_OBJECT = (function() {
 
         select_feature_source = new ol.source.Vector();
         select_feature_layer = new ol.layer.Vector({
-            source: select_feature_source
+            source: select_feature_source,
+            style: new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: "black",
+                    width: 8
+                })
+            })
         });
 
         water_source = new ol.source.XYZ();
@@ -106,7 +121,7 @@ var LIBRARY_OBJECT = (function() {
             // url:""
         });
 
-        layers = [base_map,ponds_layer,select_feature_layer,water_layer,boundary_layer];
+        layers = [base_map,base_map2,ponds_layer,water_layer,boundary_layer,select_feature_layer];
         map = new ol.Map({
             target: 'map',
             layers: layers,
@@ -115,7 +130,12 @@ var LIBRARY_OBJECT = (function() {
                 zoom: 10
             })
         });
+
+        map.getLayers().item(1).setVisible(false);
     };
+
+
+
 
     init_events = init_events = function() {
         (function () {
@@ -142,6 +162,11 @@ var LIBRARY_OBJECT = (function() {
             var zoom = map.getView().getZoom();
             var zoomInfo = '<h6>Current Zoom level = ' + zoom+'</h6>';
             document.getElementById('zoomlevel').innerHTML = zoomInfo;
+            if (zoom > 14){
+                base_map2.setVisible(true);
+            }else{
+                base_map2.setVisible(false);
+            }
             // Object.keys(layersDict).forEach(function(key){
             //     var source =  layersDict[key].getSource();
             // });
@@ -151,9 +176,9 @@ var LIBRARY_OBJECT = (function() {
         map.on("singleclick",function(evt){
 
             var zoom = map.getView().getZoom();
-            if (zoom < 13){
+            if (zoom < 16){
 
-                $('.info').html('<b>The zoom level has to be 13 or greater. Please check and try again.</b>');
+                $('.info').html('<b>The zoom level has to be 16 or greater. Please check and try again.</b>');
                 $('#info').removeClass('hidden');
                 return false;
             }else{
@@ -177,7 +202,7 @@ var LIBRARY_OBJECT = (function() {
                     polygon.applyTransform(ol.proj.getTransform('EPSG:4326', 'EPSG:3857'));
                     var feature = new ol.Feature(polygon);
 
-                    map.getLayers().item(2).getSource().clear();
+                    map.getLayers().item(5).getSource().clear();
                     select_feature_source.addFeature(feature);
 
                     generate_chart(data.values,proj_coords[1],proj_coords[0]);
@@ -214,12 +239,16 @@ var LIBRARY_OBJECT = (function() {
             },
             plotOptions: {
                 series: {
+                    marker: {
+                        enabled: true
+                    },
                     allowPointSelect:true,
                     cursor: 'pointer',
                     point: {
                         events: {
                             click: function () {
                                 $('.info').html('');
+                                $("#meta-table").html('');
                                 $("#reset").addClass('hidden');
                                 var lat = $("#current-lat").val();
                                 var lon = $("#current-lon").val();
@@ -227,6 +256,7 @@ var LIBRARY_OBJECT = (function() {
                                 xhr.done(function(data) {
                                     if("success" in data) {
                                         map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
+                                        $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+lat+'</td></tr><tr><th>Longitude</th><td>'+lon+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                         $("#reset").removeClass('hidden');
                                     }else{
                                         $('.info').html('<b>Error processing the request. Please be sure to click on a feature.'+data.error+'</b>');
@@ -260,8 +290,8 @@ var LIBRARY_OBJECT = (function() {
             yAxis: {
                 title: {
                     text: '%'
-                }
-
+                },
+                max: 1
             },
             exporting: {
                 enabled: true
