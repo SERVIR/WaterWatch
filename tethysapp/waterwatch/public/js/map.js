@@ -160,7 +160,7 @@ var LIBRARY_OBJECT = (function() {
         //Map on zoom function. To keep track of the zoom level. Data can only be viewed can only be added at a certain zoom level.
         map.on("moveend", function() {
             var zoom = map.getView().getZoom();
-            var zoomInfo = '<h6>Current Zoom level = ' + zoom+'</h6>';
+            var zoomInfo = '<h6>Current Zoom level = ' + zoom+'.</h6><span>Note: The zoom level needs to be 16 or greater to retrieve data.</span>';
             document.getElementById('zoomlevel').innerHTML = zoomInfo;
             if (zoom > 14){
                 base_map2.setVisible(true);
@@ -250,17 +250,20 @@ var LIBRARY_OBJECT = (function() {
                                 $('.info').html('');
                                 $("#meta-table").html('');
                                 $("#reset").addClass('hidden');
+                                $("#layers_checkbox").addClass('hidden');
                                 var lat = $("#current-lat").val();
                                 var lon = $("#current-lon").val();
                                 var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                                 xhr.done(function(data) {
                                     if("success" in data) {
                                         map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
-                                        $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+lat.toFixed(6)+'</td></tr><tr><th>Longitude</th><td>'+lon.toFixed(6)+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
+                                        $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                         $("#reset").removeClass('hidden');
+                                        $("#layers_checkbox").removeClass('hidden');
                                     }else{
                                         $('.info').html('<b>Error processing the request. Please be sure to click on a feature.'+data.error+'</b>');
                                         $('#info').removeClass('hidden');
+                                        $("#layers_checkbox").addClass('hidden');
                                     }
                                 });
 
@@ -302,6 +305,9 @@ var LIBRARY_OBJECT = (function() {
             }]
         });
     };
+
+    //onClick="vector_summer.setVisible(!vector_summer.getVisible());"
+
     init_all = function(){
         init_vars();
         init_map();
@@ -331,9 +337,27 @@ var LIBRARY_OBJECT = (function() {
     // the DOM tree finishes loading
 
     $(function() {
-
-
         init_all();
+
+        $('#mndwi_toggle').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(3).setVisible(true);
+            } else {
+                map.getLayers().item(3).setVisible(false);
+            }
+        });
+
+        $('#ponds_toggle').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(2).setVisible(true);
+            } else {
+                map.getLayers().item(2).setVisible(false);
+            }
+        });
+
+
     });
 
     return public_interface;

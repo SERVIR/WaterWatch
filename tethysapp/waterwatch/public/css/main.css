@@ -45,10 +45,9 @@ width: auto;
 .gee-attr {
     top: 4px;
     right: 20px;
-    width: 300px;
-    max-height: 90%;
-    overflow-y: auto;
-    margin: 5px;
+    width: 275px;
+    height:26px;
+    margin: 3px;
     color:white;
     background: rgba(0,60,136,.8);
     border: 1px #ddd solid;
