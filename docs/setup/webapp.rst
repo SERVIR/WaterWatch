@@ -10,6 +10,11 @@ Web Application
 
     <a href="http://tethys.servirglobal.net/apps/waterwatch/" target="_blank">http://tethys.servirglobal.net/apps/waterwatch/ </a>
 
+.. note::
+
+    The following instructions have been tested on Ubuntu 16.04. Your workflow might be slightly different based on the operating system that you are using.
+
+
 Prerequisites
 ----------------
 
@@ -102,7 +107,7 @@ You should now have the WaterWatch (Ferlo Ephemeral Water Body Monitoring Dashbo
 
 Installation for Production
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Installing apps in a Tethys Platform configured for production can be challenging. Most of the difficulties arise, because Tethys is served by Nginx in production and all the files need to be owned by the Nginx user. The following instructions will allow you to deploy the GRACE Viewer on your own Tethys production server. You can find the Tethys Production installation instructions `here. <http://docs.tethysplatform.org/en/stable/installation/production.html>`_
+Installing apps in a Tethys Platform configured for production can be challenging. Most of the difficulties arise, because Tethys is served by Nginx in production and all the files need to be owned by the Nginx user. The following instructions will allow you to deploy the WaterWatch app on to your own Tethys production server. You can find the Tethys Production installation instructions `here. <http://docs.tethysplatform.org/en/stable/installation/production.html>`_
 
 
 Change the Ownership of the Files to the Current User
