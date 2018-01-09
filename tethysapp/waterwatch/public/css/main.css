@@ -1,33 +1,18 @@
-#app-content-wrapper #app-content{
+#app-content-wrapper #app-content {
     height: 100%;
-    /*padding-top: 60px;*/
-    /*padding-bottom: 50px;*/
 }
 
-#inner-app-content{
-    padding: 0;
+#inner-app-content {
+    padding-top: 0;
+    height: 100%;
 }
 
-#ts-plot-modal .modal-dialog {
-    position: absolute !important;
-    display: table; //This is important
-width: auto;
-    min-width: 100%;
-    max-height: calc(100vh - 210px);
-    overflow-y: auto;
-    overflow-x: auto;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    left: 0;
+#inner-app-content .intro_message {
+    margin-bottom: 0;
 }
-#ts-plot-modal .modal-body {
-    height: 100%;
-    width:100%;
-    border-radius: 0;
-}
+
 .map-view-legend {
-    bottom: 10px;
+    bottom: 65px;
     /*right: 20px;*/
     width: 170px;
     max-height: 90%;
@@ -43,8 +28,8 @@ width: auto;
 }
 
 .gee-attr {
-    top: 4px;
-    right: 20px;
+    top: 55px;
+    right: 5px;
     width: 275px;
     height:26px;
     margin: 3px;
@@ -57,6 +42,20 @@ width: auto;
   background: rgba(0,60,136,.5)
 }
 
+.zoom-attr {
+    top: 95px;
+    right: 5px;
+    width: 275px;
+    height:26px;
+    margin: 3px;
+    color:white;
+    background: rgba(0,60,136,.8);
+    border: 1px #ddd solid;
+    z-index: 999;
+}
+.zoom-attr:hover {
+  background: rgba(0,60,136,.5)
+}
 .flex-container-row {
     display: flex;
     flex-flow: row wrap;
@@ -79,15 +78,15 @@ width: auto;
 .logo-image img {
   max-width: 100%;
 }
-#help-modal .modal-dialog{
-    position: fixed;
-    display: table; //This is important
-    overflow-y: auto;
-    overflow-x: auto;
-    width: auto;
-    min-width: 100%;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    left: 0;
-}
+/*#help-modal .modal-dialog{*/
+    /*position: fixed;*/
+    /*display: table; //This is important*/
+    /*overflow-y: auto;*/
+    /*overflow-x: auto;*/
+    /*width: auto;*/
+    /*min-width: 100%;*/
+    /*top: 0;*/
+    /*bottom: 0;*/
+    /*right: 0;*/
+    /*left: 0;*/
+/*}*/

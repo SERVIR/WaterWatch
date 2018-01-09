@@ -26,7 +26,7 @@ var LIBRARY_OBJECT = (function() {
         public_interface,				// Object returned by the module
         select_feature_source,
         select_feature_layer,
-        $tsplotModal,
+        $chartModal,
         water_source,
         water_layer;
 
@@ -50,7 +50,7 @@ var LIBRARY_OBJECT = (function() {
         var $layers_element = $('#layers');
         ponds_mapid = $layers_element.attr('data-ponds-mapid');
         ponds_token = $layers_element.attr('data-ponds-token');
-        $tsplotModal = $("#ts-plot-modal");
+        $chartModal = $("#chart-modal");
     };
 
     init_map = function(){
@@ -160,7 +160,7 @@ var LIBRARY_OBJECT = (function() {
         //Map on zoom function. To keep track of the zoom level. Data can only be viewed can only be added at a certain zoom level.
         map.on("moveend", function() {
             var zoom = map.getView().getZoom();
-            var zoomInfo = '<h6>Current Zoom level = ' + zoom+'.</h6><span>Note: The zoom level needs to be 16 or greater to retrieve data.</span>';
+            var zoomInfo = '<p style="color:white;">Current Zoom level = ' + zoom+'.</p>';
             document.getElementById('zoomlevel').innerHTML = zoomInfo;
             if (zoom > 14){
                 base_map2.setVisible(true);
@@ -176,15 +176,17 @@ var LIBRARY_OBJECT = (function() {
         map.on("singleclick",function(evt){
 
             var zoom = map.getView().getZoom();
-            if (zoom < 16){
+            $chartModal.modal('show');
+            if (zoom < 14){
 
-                $('.info').html('<b>The zoom level has to be 16 or greater. Please check and try again.</b>');
+                $('.info').html('<b>The zoom level has to be 14 or greater. Please check and try again.</b>');
                 $('#info').removeClass('hidden');
                 return false;
             }else{
                 $('.info').html('');
                 $('#info').addClass('hidden');
             }
+
             var clickCoord = evt.coordinate;
             var proj_coords = ol.proj.transform(clickCoord, 'EPSG:3857','EPSG:4326');
             $("#current-lat").val(proj_coords[1]);
@@ -338,7 +340,9 @@ var LIBRARY_OBJECT = (function() {
 
     $(function() {
         init_all();
-
+        $(".alert").click(function(){
+            $(".alert").alert("close");
+        });
         $('#mndwi_toggle').change(function() {
             // this will contain a reference to the checkbox
             if (this.checked) {
