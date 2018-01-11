@@ -8,7 +8,7 @@ class Waterwatch(TethysAppBase):
 
     name = 'Ferlo Ephemeral Water Body Monitoring Dashboard'
     index = 'waterwatch:home'
-    icon = 'waterwatch/images/logo.png'
+    icon = 'waterwatch/images/logo_2.png'
     package = 'waterwatch'
     root_url = 'waterwatch'
     color = '#2c3e50'

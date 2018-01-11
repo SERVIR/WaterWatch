@@ -2,6 +2,7 @@ import ee
 from ee.ee_exception import EEException
 import requests
 import json
+import math
 import numpy as np
 import datetime,time
 
@@ -16,24 +17,18 @@ except EEException as e:
     scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
     ee.Initialize(credentials)
 
-def rescale(img, exp, thresholds):
-    return img.expression(exp, {img: img}).subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
-
-
 def s2CloudMask(img):
-    score = ee.image(1.0)
-    score = score.min(rescale(img, 'img.B2', [2000, 3000]))
-    score = score.min(rescale(img, 'img.B4 + img.B3 + img.B2', [1900, 8000]))
+    qa = img.select('QA60');
 
-    score = score.min(
-        rescale(img, 'img.B8 + img.B11 + img.B12', [2000, 8000]))
+    # Bits 10 and 11 are clouds and cirrus, respectively.
+    cloudBitMask = int(math.pow(2, 10));
+    cirrusBitMask = int(math.pow(2, 11));
 
-    ndsi = img.normalizedDifference(['B3', 'B11'])
-    score = score.min(rescale(ndsi, 'img', [0.8, 0.6]))
-    score = score.min(rescale(img, 'img.B10', [10, 100]))
-    score = score.multiply(100).byte().lt(15).rename(score, 'cloudMask')
-    img = img.updateMask(score)
-    return img.divide(10000)
+    # clear if both flags set to zero.
+    clear = qa.bitwiseAnd(cloudBitMask).eq(0).And(
+             qa.bitwiseAnd(cirrusBitMask).eq(0));
+
+    return img.divide(10000).updateMask(clear).set('system:time_start',img.get('system:time_start'))
 
 
 def lsCloudMask(img):
@@ -52,12 +47,30 @@ def mergeCollections(l8, s2, studyArea, t1, t2):
         ee.Filter.lt('CLOUD_COVER', 75)).map(lsCloudMask).select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
                                                                  ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'])
 
-    # st2rename = s2.filterBounds(studyArea).filterDate(t1, t2).filter(
-    #     ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(s2CloudMask).select(
-    #     ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'],
-    #     ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'])
+    st2rename = s2.filterBounds(studyArea).filterDate(t1, t2).filter(
+        ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(s2CloudMask).select(
+        ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'],
+        ['blue', 'green', 'red', 'nir', 'swir1', 'swir2']).map(bandPassAdjustment)
 
     return lc8rename
+
+
+def bandPassAdjustment(img):
+    bands = ['blue','green','red','nir','swir1','swir2'];
+    # linear regression coefficients for adjustment
+    gain = ee.Array([[0.977], [1.005], [0.982], [1.001], [1.001], [0.996]]);
+    bias = ee.Array([[-0.00411],[-0.00093],[0.00094],[-0.00029],[-0.00015],[-0.00097]]);
+    # Make an Array Image, with a 1-D Array per pixel.
+    arrayImage1D = img.select(bands).toArray();
+
+    # Make an Array Image with a 2-D Array per pixel, 6x1.
+    arrayImage2D = arrayImage1D.toArray(1);
+
+    componentsImage = ee.Image(gain).multiply(arrayImage2D).add(ee.Image(bias))\
+    .arrayProject([0])\
+    .arrayFlatten([bands]).float();
+
+    return componentsImage.set('system:time_start',img.get('system:time_start'));
 
 
 def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
@@ -215,6 +228,3 @@ def getMNDWI(lon,lat,xValue,yValue):
     mndwi_img = getClickedImage(xValue,yValue,selPond)
 
     return mndwi_img
-
-
-
