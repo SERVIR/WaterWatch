@@ -17,18 +17,30 @@ except EEException as e:
     scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
     ee.Initialize(credentials)
 
+
+def rescale(img, exp, thresholds):
+    return img.expression(exp, {'img': img}).subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
+
+
 def s2CloudMask(img):
-    qa = img.select('QA60');
+    score = ee.Image(1.0)
+    qa = img.select("QA60").unmask()
 
-    # Bits 10 and 11 are clouds and cirrus, respectively.
-    cloudBitMask = int(math.pow(2, 10));
-    cirrusBitMask = int(math.pow(2, 11));
+    score = score.min(rescale(toa.select(['B2']), [0.1, 0.5]))
+    score = score.min(rescale(toa.select(['B1']), [0.1, 0.3]))
+    score = score.min(rescale(toa.select(['B1']).add(toa.select(['B10'])), [0.15, 0.2]))
+    score = score.min(rescale(toa.select(['B4']).add(toa.select(['B3'])).add(toa.select('B2')), [0.2, 0.8]));
 
-    # clear if both flags set to zero.
-    clear = qa.bitwiseAnd(cloudBitMask).eq(0).And(
-             qa.bitwiseAnd(cirrusBitMask).eq(0));
+    #Clouds are moist
+    ndmi = toa.normalizedDifference(['B8A','B11']);
+    score=score.min(rescale(ndmi, [-0.1, 0.1]));
 
-    return img.divide(10000).updateMask(clear).set('system:time_start',img.get('system:time_start'))
+    # However, clouds are not snow.
+    ndsi = toa.normalizedDifference(['B3', 'B11']);
+    score=score.min(rescale(ndsi, [0.8, 0.6]));
+    score = score.multiply(100).byte().lte(10).rename(['cloudMask'])
+    img = img.updateMask(score.Or(qa.lt(1024)))
+    return img.divide(10000).set("system:time_start", img.get("system:time_start"))
 
 
 def lsCloudMask(img):
@@ -164,6 +176,163 @@ def getClickedImage(xValue,yValue,feature):
 
     return water_imageid,properties
 
+def accumGFS(collection,startDate,nDays):
+  if (nDays>16):
+    raise Warning('Max forecast days is 16, only producing forecast for 16 days...');
+    nDays = 16;
+
+  cnt = 1;
+  imgList = [];
+  precipScale = ee.Image(1).divide(ee.Image(1e3))
+  for i in range(nDays+1):
+    cntMax =(24*(i+1));
+    forecastMeta = [];
+    for j in range(cnt,cntMax+1):
+        forecastMeta.append(cnt)
+        cnt+=1
+
+    dayPrecip = collection.filter(ee.Filter.inList('forecast_hours', forecastMeta));
+    imgList.append(dayPrecip.sum().multiply(precipScale)
+      .set('system:time_start',startDate.advance(i,'day')));
+
+  return ee.ImageCollection(imgList);
+
+
+def accumCFS(collection,startDate,nDays):
+    imgList = [];
+    precipScale = ee.Image(86400).divide(ee.Image(1e3))
+    for i in range(nDays):
+        newDate = startDate.advance(i,'day');
+        dayPrecip = collection.filterDate(newDate,newDate.advance(24,'hour'));
+        #print(len(dayPrecip.aggregate_array('system:time_start').getInfo()))
+        imgList.append(dayPrecip.sum().multiply(precipScale)\
+          .set('system:time_start',newDate.millis()));
+    return ee.ImageCollection(imgList);
+
+
+def calcInitIap(collection,startDate,pastDays):
+    off = pastDays*-1;
+    s = startDate.advance(off,'day');
+    e = s.advance(pastDays,'day');
+    prevPrecip = collection.filterDate(s,e);
+
+    dailyPrev = accumCFS(prevPrecip,s,pastDays);
+
+    imgList = dailyPrev.toList(pastDays);
+    outList = [];
+
+    for i in range(pastDays):
+        pr = ee.Image(imgList.get(i));
+        antecedent = pr.multiply(ee.Image(1).divide(pastDays-i));
+        outList.append(antecedent);
+
+    Iap = ee.ImageCollection(outList).sum().rename('Iap');
+
+    return Iap;
+
+
+def fClass(object):
+    def __init__(self,feature,k=0.45,Gmax=15,L=0.1,Kr=0.9,n=10,alpha=0.9):
+        # set parameters to EE variables
+        self.k = ee.Image(k)
+        self.Gmax = ee.Image(Gmax)
+        self.L = ee.Image(L)
+        self.Kr = ee.Image(Kr)
+        self.n = ee.Image(n)
+        self.alpha = ee.Image(alpha)
+        self.pArea = feature.geometry().area()
+
+def forecast(self,feature,k=0.45,Gmax=15,L=0.1,Kr=0.9,n=10,alpha=0.9):
+    # get observation and timestamp
+    obsTimes = self.observationTs.index
+    obs = self.observationTs.values
+
+
+
+    # calculate volume - area/height relationship parameters
+    self.Ac = self.n.multiply(self.pArea)
+    self.h0 = ee.Image(1);
+
+    # blank list to append output data to
+    forecasts = []
+    dates = []
+    cnt = 0
+
+    # begin forecasting water area
+    forecastDays = 16
+    modelDate = ee.Date(obsTimes[i-1].strftime("%Y-%m-%d"))
+
+    # calculate initial conditions
+    A = ee.Image(self.pArea).multiply(ee.Image(obs[i-1]));
+    hInit = A.divide(self.So).pow(self.h0.divide(self.alpha));
+    self.Vo = self.So.multiply(self.h0).divide(self.alpha.add(1));
+
+    precipData = self.gfs.filterDate(modelDate,modelDate.advance(1,'hour'))
+    dailyPrecip = accumGFS(precipData,modelDate,forecastDays);
+    try:
+        tmp = len(dailyPrecip.aggregate_array('system:time_start').getInfo())
+    except:
+        continue
+
+    initIap = calcInitIap(self.cfs,modelDate,7);
+
+    # set initial conditions with t-1 forcing
+    first = ee.Image(self.cfs.filterDate(modelDate.advance(-1,'day'),modelDate).select(['precip']).sum())\
+          .multiply(self.scaler).addBands(initIap.multiply(1000))\
+          .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
+          .rename(['precip','Iap','vol','area','height']).clip(self.studyArea)\
+          .set('system:time_start',modelDate.advance(-6,'hour').millis()).float();
+
+    modelOut = ee.ImageCollection.fromImages(dailyPrecip.iterate(self.accumVolume,ee.List([first])));
+
+    pondPct = modelOut.select('area').map(self.pctArea)
+    try:
+        forecasts.append(ee.Image(pondPct.sort('system:time_start',False).first())\
+                         .reduceRegion(geometry=self.pond.geometry(),reducer=ee.Reducer.mean(),scale=30)
+                         .get('area').getInfo())
+    except:
+        forecasts.append(np.nan)
+    dates.append(obsTimes[i])
+
+    return np.array(forecasts)
+
+    def _accumVolume(self,img,imgList):
+        # extract out forcing and state variables
+        past = ee.Image(ee.List(imgList).get(-1)).clip(self.studyArea);
+        pastIt = past.select('Iap');
+        pastPr = past.select('precip');
+        pastAr = past.select('area');
+        #pastHt = past.select('height');
+        pastVl = past.select('vol');
+        nowPr = img.select('precip').clip(self.studyArea);
+        date = ee.Date(img.get('system:time_start'));
+
+        # change in volume model
+        deltaIt = pastIt.add(pastPr).multiply(self.k);
+        Gt = self.Gmax.subtract(deltaIt);
+        Gt = Gt.where(Gt.lt(0),0);
+        Pe = nowPr.subtract(Gt);
+        Pe = Pe.where(Pe.lt(0),0);
+        Qin = self.Kr.multiply(Pe).multiply(self.Ac);
+        dV = nowPr.multiply(self.pArea).add(Qin).subtract(self.L.multiply(pastAr));
+        # convert dV to actual volume
+        volume = pastVl.add(dV).rename('vol');
+        volume = volume.where(volume.lt(0),0);
+
+        # empirical model for volume to area/height relationship
+        ht = volume.divide(self.Vo).pow(ee.Image(1).divide(self.alpha))\
+                  .divide(ee.Image(1).divide(self.h0)).rename('height');
+        area = self.So.multiply(ht.divide(self.h0).pow(self.alpha)).rename('area');
+        area = area.where(area.lt(0),1); # contrain area to real values
+
+        # set state variables to output model step
+        step = nowPr.addBands(deltaIt).addBands(volume).addBands(area).addBands(ht)\
+                  .set('system:time_start',date.advance(6,'hour').millis());
+
+        return ee.List(imgList).add(step.float());
+
+
+
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
@@ -199,6 +368,10 @@ img = mergedCollection.median().clip(studyArea)
 
 mndwiImg = mndwiCollection.median().clip(studyArea)
 
+gfs = ee.ImageCollection('NOAA/GFS0P25').select(['total_precipitation_surface'],['precip'])
+cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'],['precip'])
+elv = ee.Image('USGS/SRTMGL1_003')
+
 def initLayers():
     return pondsImgID
 
@@ -220,6 +393,12 @@ def checkFeature(lon,lat):
     ts_values = makeTimeSeries(selPond)
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
     return ts_values,coordinates
+
+def forecastFeatue(lon,lat):
+
+    selPond = filterPond(lon,lat)
+
+    return ts_values
 
 def getMNDWI(lon,lat,xValue,yValue):
 

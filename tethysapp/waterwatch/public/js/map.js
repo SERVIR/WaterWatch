@@ -208,6 +208,7 @@ var LIBRARY_OBJECT = (function() {
                     select_feature_source.addFeature(feature);
 
                     generate_chart(data.values,proj_coords[1],proj_coords[0]);
+
                     $loading.addClass('hidden');
                     $("#plotter").removeClass('hidden');
 
@@ -303,7 +304,7 @@ var LIBRARY_OBJECT = (function() {
             },
             series: [{
                 data:data,
-                name: 'Percent coverage of water'
+                name: 'Historical percent coverage of water'
             }]
         });
     };

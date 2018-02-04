@@ -46,18 +46,28 @@
 <style>
     #map{
         height:100%;
+        top:0%
+        position:relative;
     }
     #graph{
         height:100%;
     }
+    #alert-box {
+        width:70%;
+        margin-left:15%;
+        margin-top:1%;
+        position:absolute;
+    }
 </style>
-<div class="alert alert-info alert-dismissible intro_message" role="alert" style="width:70%;margin-left:15%;margin-top:1%">
+
+<div class="alert alert-info alert-dismissible intro_message" role="alert">
     <div align="center">
         <button id="close_map_intro_message" type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
-        Zoom into an area of interest and click on a pond. The zoom level has to be greater than 14. The basemaps will switch at zoom level 14.
+        Zoom into an area of interest and click on a pond. The zoom level has to be greater than 14. <br> The basemaps will switch at zoom level 14.
     </div>
 </div>
+
 <div id="map" class="map">
 
     <div id="map-view-legend" class="map-view-legend ol-unselectable ol-control">
