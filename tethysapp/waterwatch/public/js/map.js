@@ -37,6 +37,7 @@ var LIBRARY_OBJECT = (function() {
      *************************************************************************/
 
     var generate_chart,
+        generate_forecast,
         init_all,
         init_events,
         init_vars,
@@ -132,10 +133,6 @@ var LIBRARY_OBJECT = (function() {
         });
 
         map.getLayers().item(1).setVisible(false);
-    };
-
-
-
 
     init_events = init_events = function() {
         (function () {
@@ -156,6 +153,7 @@ var LIBRARY_OBJECT = (function() {
 
             observer.observe(target, config);
         }());
+      }
 
         //Map on zoom function. To keep track of the zoom level. Data can only be viewed can only be added at a certain zoom level.
         map.on("moveend", function() {
@@ -218,21 +216,48 @@ var LIBRARY_OBJECT = (function() {
                     $loading.addClass('hidden');
 
                 }
+              });
+            var $loadingF = $('#f-view-file-loading');
+            $loadingF.removeClass('hidden');
+            $("#forecast-plotter").addClass('hidden');
+            var yhr = ajax_update_database('forecast',{'lat':proj_coords[1],'lon':proj_coords[0]});
+            yhr.done(function(data) {
+                if("success" in data) {
+                    $('.info').html('');
+                    map.getLayers().item(3).getSource().setUrl("");
+                    var polygon = new ol.geom.Polygon(data.coordinates);
+                    polygon.applyTransform(ol.proj.getTransform('EPSG:4326', 'EPSG:3857'));
+                    var feature = new ol.Feature(polygon);
+
+                    map.getLayers().item(5).getSource().clear();
+                    select_feature_source.addFeature(feature);
+
+                    generate_forecast(data.values,proj_coords[1],proj_coords[0]);
+
+                    $loadingF.addClass('hidden');
+                    $("#forecast-plotter").removeClass('hidden');
+
+                }else{
+                    $('.info').html('<b>Error processing the request. Please be sure to click on a feature.'+data.error+'</b>');
+                    $('#info').removeClass('hidden');
+                    $loadingF.addClass('hidden');
+
+                }
             });
-        });
-        // map.on('pointermove', function(evt) {
-        //     if (evt.dragging) {
-        //         return;
-        //     }
-        //     var pixel = map.getEventPixel(evt.originalEvent);
-        //     var hit = map.forEachLayerAtPixel(pixel, function(layer) {
-        //         if (layer != layers[0]){
-        //             current_layer = layer;
-        //             return true;}
-        //     });
-        //     map.getTargetElement().style.cursor = hit ? 'pointer' : '';
-        // });
-    };
+            });
+            map.on('pointermove', function(evt) {
+                if (evt.dragging) {
+                    return;
+                }
+                var pixel = map.getEventPixel(evt.originalEvent);
+                var hit = map.forEachLayerAtPixel(pixel, function(layer) {
+                    if (layer != layers[0]){
+                        current_layer = layer;
+                        return true;}
+                });
+                map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+      });
+      };
 
     generate_chart = function(data,lat,lon){
         Highcharts.stockChart('plotter',{
@@ -308,6 +333,80 @@ var LIBRARY_OBJECT = (function() {
             }]
         });
     };
+    generate_forecast = function(data,lat,lon){
+        Highcharts.stockChart('forecast-plotter',{
+          chart: {
+              type:'line',
+              zoomType: 'x'
+          },
+          plotOptions: {
+              series: {
+                  marker: {
+                      enabled: true
+                  },
+                  allowPointSelect:true,
+                  cursor: 'pointer',
+                  point: {
+                      events: {
+                          click: function () {
+                              $('.info').html('');
+                              $("#meta-table").html('');
+                              $("#reset").addClass('hidden');
+                              $("#layers_checkbox").addClass('hidden');
+                              var lat = $("#current-lat").val();
+                              var lon = $("#current-lon").val();
+                              var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
+                              xhr.done(function(data) {
+                                  if("success" in data) {
+                                      map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
+                                      $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
+                                      $("#reset").removeClass('hidden');
+                                      $("#layers_checkbox").removeClass('hidden');
+                                  }else{
+                                      $('.info').html('<b>Error processing the request. Please be sure to click on a feature.'+data.error+'</b>');
+                                      $('#info').removeClass('hidden');
+                                      $("#layers_checkbox").addClass('hidden');
+                                  }
+                              });
+
+                          }
+                      }
+                  }
+              }
+          },
+          title: {
+              text:'Percent coverage of water at '+(lon.toFixed(3))+','+(lat.toFixed(3))
+              // style: {
+              //     fontSize: '13px',
+              //     fontWeight: 'bold'
+              // }
+          },
+          xAxis: {
+              type: 'datetime',
+              labels: {
+                  format: '{value:%d %b %Y}'
+                  // rotation: 90,
+                  // align: 'left'
+              },
+              title: {
+                  text: 'Date'
+              }
+          },
+          yAxis: {
+              title: {
+                  text: '%'
+              },
+              max: 1
+          },
+          exporting: {
+              enabled: true
+          },
+          series: [{
+              data:data,
+              name: 'Forecast percent coverage of water'
+          }]
+      });
+  };
 
     //onClick="vector_summer.setVisible(!vector_summer.getVisible());"
 

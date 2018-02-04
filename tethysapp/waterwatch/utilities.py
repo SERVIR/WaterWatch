@@ -18,25 +18,25 @@ except EEException as e:
     ee.Initialize(credentials)
 
 
-def rescale(img, exp, thresholds):
-    return img.expression(exp, {'img': img}).subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
+def rescale(img, thresholds):
+    return img.subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
 
 
 def s2CloudMask(img):
     score = ee.Image(1.0)
     qa = img.select("QA60").unmask()
 
-    score = score.min(rescale(toa.select(['B2']), [0.1, 0.5]))
-    score = score.min(rescale(toa.select(['B1']), [0.1, 0.3]))
-    score = score.min(rescale(toa.select(['B1']).add(toa.select(['B10'])), [0.15, 0.2]))
-    score = score.min(rescale(toa.select(['B4']).add(toa.select(['B3'])).add(toa.select('B2')), [0.2, 0.8]));
+    score = score.min(rescale(img.select(['B2']), [0.1, 0.5]))
+    score = score.min(rescale(img.select(['B1']), [0.1, 0.3]))
+    score = score.min(rescale(img.select(['B1']).add(img.select(['B10'])), [0.15, 0.2]))
+    score = score.min(rescale(img.select(['B4']).add(img.select(['B3'])).add(img.select('B2')), [0.2, 0.8]));
 
     #Clouds are moist
-    ndmi = toa.normalizedDifference(['B8A','B11']);
+    ndmi = img.normalizedDifference(['B8A','B11']);
     score=score.min(rescale(ndmi, [-0.1, 0.1]));
 
     # However, clouds are not snow.
-    ndsi = toa.normalizedDifference(['B3', 'B11']);
+    ndsi = img.normalizedDifference(['B3', 'B11']);
     score=score.min(rescale(ndsi, [0.8, 0.6]));
     score = score.multiply(100).byte().lte(10).rename(['cloudMask'])
     img = img.updateMask(score.Or(qa.lt(1024)))
@@ -64,7 +64,7 @@ def mergeCollections(l8, s2, studyArea, t1, t2):
         ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'],
         ['blue', 'green', 'red', 'nir', 'swir1', 'swir2']).map(bandPassAdjustment)
 
-    return lc8rename
+    return ee.ImageCollection(lc8rename.merge(st2rename))
 
 
 def bandPassAdjustment(img):
@@ -142,7 +142,7 @@ def pondClassifier(shape):
 
     return ee.Feature(shape).set({'pondCls': cls.int8()})
 
-def makeTimeSeries(feature):
+def makeTimeSeries(collection,feature,key=None):
 
     def reducerMapping(img):
         reduction = img.reduceRegion(
@@ -150,9 +150,9 @@ def makeTimeSeries(feature):
 
         time = img.get('system:time_start')
 
-        return img.set('indexVal',[ee.Number(time),reduction.get('water')])
+        return img.set('indexVal',[ee.Number(time),reduction.get(key)])
 
-    collection = waterCollection.select('water').filterBounds(feature.geometry()) #.getInfo()
+    collection = collection.filterBounds(feature.geometry()) #.getInfo()
 
     indexCollection = collection.map(reducerMapping)
 
@@ -204,7 +204,6 @@ def accumCFS(collection,startDate,nDays):
     for i in range(nDays):
         newDate = startDate.advance(i,'day');
         dayPrecip = collection.filterDate(newDate,newDate.advance(24,'hour'));
-        #print(len(dayPrecip.aggregate_array('system:time_start').getInfo()))
         imgList.append(dayPrecip.sum().multiply(precipScale)\
           .set('system:time_start',newDate.millis()));
     return ee.ImageCollection(imgList);
@@ -231,8 +230,9 @@ def calcInitIap(collection,startDate,pastDays):
     return Iap;
 
 
-def fClass(object):
-    def __init__(self,feature,k=0.45,Gmax=15,L=0.1,Kr=0.9,n=10,alpha=0.9):
+class fClass(object):
+    def __init__(self,feature,initCond,initTime,
+                 k=0.45,Gmax=15,L=0.1,Kr=0.9,n=10,alpha=0.9):
         # set parameters to EE variables
         self.k = ee.Image(k)
         self.Gmax = ee.Image(Gmax)
@@ -241,70 +241,66 @@ def fClass(object):
         self.n = ee.Image(n)
         self.alpha = ee.Image(alpha)
         self.pArea = feature.geometry().area()
+        self.initial = ee.Image(initCond)
+        self.initTime = initTime
+        self.pond = feature
 
-def forecast(self,feature,k=0.45,Gmax=15,L=0.1,Kr=0.9,n=10,alpha=0.9):
-    # get observation and timestamp
-    obsTimes = self.observationTs.index
-    obs = self.observationTs.values
+    def forecast(self):
+        # calculate volume - area/height relationship parameters
+        self.Ac = self.n.multiply(self.pArea)
+        self.h0 = ee.Image(1);
 
+        pondMin = ee.Number(elv.reduceRegion(
+          geometry=self.pond.geometry(),
+          reducer=ee.Reducer.min(),
+          scale=30
+        ).get('elevation'));
+        SoInit = ee.Image(0).where(elv.gte(pondMin).And(elv.lte(pondMin.add(3))),1);
+        self.So = ee.Image(ee.Number(SoInit.reduceRegion(
+          geometry=self.pond.geometry(),
+          reducer=ee.Reducer.sum(),
+          scale=30
+        ).get('constant'))).multiply(900);
 
+        # begin forecasting water area
+        forecastDays = 15
+        modelDate = self.initTime
 
-    # calculate volume - area/height relationship parameters
-    self.Ac = self.n.multiply(self.pArea)
-    self.h0 = ee.Image(1);
+        # calculate initial conditions
+        A = ee.Image(self.pArea).multiply(self.initial);
+        hInit = A.divide(self.So).pow(self.h0.divide(self.alpha));
+        self.Vo = self.So.multiply(self.h0).divide(self.alpha.add(1));
 
-    # blank list to append output data to
-    forecasts = []
-    dates = []
-    cnt = 0
+        precipData = gfs.filterDate(modelDate,modelDate.advance(1,'hour'))\
+                        .filterMetadata('forecast_hours','greater_than',0)\
+                        .select(['total_precipitation_surface'],['precip'])
+        dailyPrecip = accumGFS(precipData,modelDate,forecastDays);
 
-    # begin forecasting water area
-    forecastDays = 16
-    modelDate = ee.Date(obsTimes[i-1].strftime("%Y-%m-%d"))
+        initIap = calcInitIap(cfs,modelDate,7);
 
-    # calculate initial conditions
-    A = ee.Image(self.pArea).multiply(ee.Image(obs[i-1]));
-    hInit = A.divide(self.So).pow(self.h0.divide(self.alpha));
-    self.Vo = self.So.multiply(self.h0).divide(self.alpha.add(1));
+        # set model start with t-1 forcing
+        first = ee.Image(cfs.filterDate(modelDate.advance(-1,'day'),modelDate).select(['precip']).sum())\
+              .multiply(ee.Image(86400).divide(ee.Image(1e3))).addBands(initIap.multiply(1000))\
+              .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
+              .rename(['precip','Iap','vol','area','height']).clip(studyArea)\
+              .set('system:time_start',modelDate.advance(-6,'hour').millis()).float();
 
-    precipData = self.gfs.filterDate(modelDate,modelDate.advance(1,'hour'))
-    dailyPrecip = accumGFS(precipData,modelDate,forecastDays);
-    try:
-        tmp = len(dailyPrecip.aggregate_array('system:time_start').getInfo())
-    except:
-        continue
+        modelOut = ee.ImageCollection.fromImages(dailyPrecip.iterate(self._accumVolume,ee.List([first])));
 
-    initIap = calcInitIap(self.cfs,modelDate,7);
+        pondPct = modelOut.select('area').map(self._pctArea)
 
-    # set initial conditions with t-1 forcing
-    first = ee.Image(self.cfs.filterDate(modelDate.advance(-1,'day'),modelDate).select(['precip']).sum())\
-          .multiply(self.scaler).addBands(initIap.multiply(1000))\
-          .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
-          .rename(['precip','Iap','vol','area','height']).clip(self.studyArea)\
-          .set('system:time_start',modelDate.advance(-6,'hour').millis()).float();
-
-    modelOut = ee.ImageCollection.fromImages(dailyPrecip.iterate(self.accumVolume,ee.List([first])));
-
-    pondPct = modelOut.select('area').map(self.pctArea)
-    try:
-        forecasts.append(ee.Image(pondPct.sort('system:time_start',False).first())\
-                         .reduceRegion(geometry=self.pond.geometry(),reducer=ee.Reducer.mean(),scale=30)
-                         .get('area').getInfo())
-    except:
-        forecasts.append(np.nan)
-    dates.append(obsTimes[i])
-
-    return np.array(forecasts)
+        ts = makeTimeSeries(pondPct.select('area'),self.pond,key='area')
+        return ts
 
     def _accumVolume(self,img,imgList):
         # extract out forcing and state variables
-        past = ee.Image(ee.List(imgList).get(-1)).clip(self.studyArea);
+        past = ee.Image(ee.List(imgList).get(-1)).clip(studyArea);
         pastIt = past.select('Iap');
         pastPr = past.select('precip');
         pastAr = past.select('area');
         #pastHt = past.select('height');
         pastVl = past.select('vol');
-        nowPr = img.select('precip').clip(self.studyArea);
+        nowPr = img.select('precip').clip(studyArea);
         date = ee.Date(img.get('system:time_start'));
 
         # change in volume model
@@ -330,6 +326,10 @@ def forecast(self,feature,k=0.45,Gmax=15,L=0.1,Kr=0.9,n=10,alpha=0.9):
                   .set('system:time_start',date.advance(6,'hour').millis());
 
         return ee.List(imgList).add(step.float());
+
+    def _pctArea(self,img):
+        pct = img.divide(ee.Image(self.pArea)).copyProperties(img,['system:time_start']);
+        return pct#.rename('pctArea')#.where(pct.gt(1),1)
 
 
 
@@ -368,7 +368,7 @@ img = mergedCollection.median().clip(studyArea)
 
 mndwiImg = mndwiCollection.median().clip(studyArea)
 
-gfs = ee.ImageCollection('NOAA/GFS0P25').select(['total_precipitation_surface'],['precip'])
+gfs = ee.ImageCollection('NOAA/GFS0P25')
 cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'],['precip'])
 elv = ee.Image('USGS/SRTMGL1_003')
 
@@ -390,15 +390,27 @@ def checkFeature(lon,lat):
 
     selPond = filterPond(lon,lat)
 
-    ts_values = makeTimeSeries(selPond)
+    ts_values = makeTimeSeries(waterCollection.select('water'),selPond,key='water')
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
     return ts_values,coordinates
 
-def forecastFeatue(lon,lat):
+def forecastFeature(lon,lat):
 
     selPond = filterPond(lon,lat)
 
-    return ts_values
+    featureImg = ee.Image(waterCollection.filterBounds(selPond).sort('system:time_start',False).first())
+
+    lastTime = ee.Date(featureImg.get('system:time_start'))
+
+    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 30).get('water'))
+
+    fModel = fClass(selPond,pondFraction,lastTime)
+
+    ts_values = fModel.forecast()
+    coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
+
+
+    return ts_values,coordinates
 
 def getMNDWI(lon,lat,xValue,yValue):
 

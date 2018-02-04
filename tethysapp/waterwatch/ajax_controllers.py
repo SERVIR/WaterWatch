@@ -36,9 +36,12 @@ def forecast(request):
     try:
         ts_vals,coordinates = forecastFeature(lon,lat)
         return_obj["values"] = ts_vals
+        return_obj["coordinates"] = coordinates
         return_obj["success"] = "success"
     except Exception as e:
         return_obj["error"] = "Error Processing Request. Error: "+ str(e)
+
+    print("processing complete...")
 
     return JsonResponse(return_obj)
 

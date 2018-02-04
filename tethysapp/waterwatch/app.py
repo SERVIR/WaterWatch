@@ -35,6 +35,11 @@ class Waterwatch(TethysAppBase):
                 controller='waterwatch.ajax_controllers.timeseries'
             ),
             UrlMap(
+                name='forecast',
+                url='waterwatch/forecast',
+                controller='waterwatch.ajax_controllers.forecast'
+            ),
+            UrlMap(
                 name='mnwdi',
                 url='waterwatch/mndwi',
                 controller='waterwatch.ajax_controllers.mndwi'
