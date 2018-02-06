@@ -29,15 +29,15 @@ def s2CloudMask(img):
     score = score.min(rescale(img.select(['B2']), [0.1, 0.5]))
     score = score.min(rescale(img.select(['B1']), [0.1, 0.3]))
     score = score.min(rescale(img.select(['B1']).add(img.select(['B10'])), [0.15, 0.2]))
-    score = score.min(rescale(img.select(['B4']).add(img.select(['B3'])).add(img.select('B2')), [0.2, 0.8]));
+    score = score.min(rescale(img.select(['B4']).add(img.select(['B3'])).add(img.select('B2')), [0.2, 0.8]))
 
     #Clouds are moist
-    ndmi = img.normalizedDifference(['B8A','B11']);
-    score=score.min(rescale(ndmi, [-0.1, 0.1]));
+    ndmi = img.normalizedDifference(['B8A','B11'])
+    score=score.min(rescale(ndmi, [-0.1, 0.1]))
 
     # However, clouds are not snow.
-    ndsi = img.normalizedDifference(['B3', 'B11']);
-    score=score.min(rescale(ndsi, [0.8, 0.6]));
+    ndsi = img.normalizedDifference(['B3', 'B11'])
+    score=score.min(rescale(ndsi, [0.8, 0.6]))
     score = score.multiply(100).byte().lte(10).rename(['cloudMask'])
     img = img.updateMask(score.Or(qa.lt(1024)))
     return img.divide(10000).set("system:time_start", img.get("system:time_start"))
@@ -62,27 +62,27 @@ def mergeCollections(l8, s2, studyArea, t1, t2):
     st2rename = s2.filterBounds(studyArea).filterDate(t1, t2).filter(
         ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(s2CloudMask).select(
         ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'],
-        ['blue', 'green', 'red', 'nir', 'swir1', 'swir2']).map(bandPassAdjustment)
+        ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'])#.map(bandPassAdjustment)
 
     return ee.ImageCollection(lc8rename.merge(st2rename))
 
 
 def bandPassAdjustment(img):
-    bands = ['blue','green','red','nir','swir1','swir2'];
+    bands = ['blue','green','red','nir','swir1','swir2']
     # linear regression coefficients for adjustment
-    gain = ee.Array([[0.977], [1.005], [0.982], [1.001], [1.001], [0.996]]);
-    bias = ee.Array([[-0.00411],[-0.00093],[0.00094],[-0.00029],[-0.00015],[-0.00097]]);
+    gain = ee.Array([[0.977], [1.005], [0.982], [1.001], [1.001], [0.996]])
+    bias = ee.Array([[-0.00411],[-0.00093],[0.00094],[-0.00029],[-0.00015],[-0.00097]])
     # Make an Array Image, with a 1-D Array per pixel.
-    arrayImage1D = img.select(bands).toArray();
+    arrayImage1D = img.select(bands).toArray()
 
     # Make an Array Image with a 2-D Array per pixel, 6x1.
-    arrayImage2D = arrayImage1D.toArray(1);
+    arrayImage2D = arrayImage1D.toArray(1)
 
     componentsImage = ee.Image(gain).multiply(arrayImage2D).add(ee.Image(bias))\
     .arrayProject([0])\
-    .arrayFlatten([bands]).float();
+    .arrayFlatten([bands]).float()
 
-    return componentsImage.set('system:time_start',img.get('system:time_start'));
+    return componentsImage.set('system:time_start',img.get('system:time_start'))
 
 
 def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
@@ -178,56 +178,56 @@ def getClickedImage(xValue,yValue,feature):
 
 def accumGFS(collection,startDate,nDays):
   if (nDays>16):
-    raise Warning('Max forecast days is 16, only producing forecast for 16 days...');
-    nDays = 16;
+    raise Warning('Max forecast days is 16, only producing forecast for 16 days...')
+    nDays = 16
 
-  cnt = 1;
-  imgList = [];
+  cnt = 1
+  imgList = []
   precipScale = ee.Image(1).divide(ee.Image(1e3))
   for i in range(nDays+1):
-    cntMax =(24*(i+1));
-    forecastMeta = [];
+    cntMax =(24*(i+1))
+    forecastMeta = []
     for j in range(cnt,cntMax+1):
         forecastMeta.append(cnt)
         cnt+=1
 
-    dayPrecip = collection.filter(ee.Filter.inList('forecast_hours', forecastMeta));
+    dayPrecip = collection.filter(ee.Filter.inList('forecast_hours', forecastMeta))
     imgList.append(dayPrecip.sum().multiply(precipScale)
-      .set('system:time_start',startDate.advance(i,'day')));
+      .set('system:time_start',startDate.advance(i,'day')))
 
-  return ee.ImageCollection(imgList);
+  return ee.ImageCollection(imgList)
 
 
 def accumCFS(collection,startDate,nDays):
-    imgList = [];
+    imgList = []
     precipScale = ee.Image(86400).divide(ee.Image(1e3))
     for i in range(nDays):
-        newDate = startDate.advance(i,'day');
-        dayPrecip = collection.filterDate(newDate,newDate.advance(24,'hour'));
+        newDate = startDate.advance(i,'day')
+        dayPrecip = collection.filterDate(newDate,newDate.advance(24,'hour'))
         imgList.append(dayPrecip.sum().multiply(precipScale)\
-          .set('system:time_start',newDate.millis()));
-    return ee.ImageCollection(imgList);
+          .set('system:time_start',newDate.millis()))
+    return ee.ImageCollection(imgList)
 
 
 def calcInitIap(collection,startDate,pastDays):
-    off = pastDays*-1;
-    s = startDate.advance(off,'day');
-    e = s.advance(pastDays,'day');
-    prevPrecip = collection.filterDate(s,e);
+    off = pastDays*-1
+    s = startDate.advance(off,'day')
+    e = s.advance(pastDays,'day')
+    prevPrecip = collection.filterDate(s,e)
 
-    dailyPrev = accumCFS(prevPrecip,s,pastDays);
+    dailyPrev = accumCFS(prevPrecip,s,pastDays)
 
-    imgList = dailyPrev.toList(pastDays);
-    outList = [];
+    imgList = dailyPrev.toList(pastDays)
+    outList = []
 
     for i in range(pastDays):
-        pr = ee.Image(imgList.get(i));
-        antecedent = pr.multiply(ee.Image(1).divide(pastDays-i));
-        outList.append(antecedent);
+        pr = ee.Image(imgList.get(i))
+        antecedent = pr.multiply(ee.Image(1).divide(pastDays-i))
+        outList.append(antecedent)
 
-    Iap = ee.ImageCollection(outList).sum().rename('Iap');
+    Iap = ee.ImageCollection(outList).sum().rename(['Iap'])
 
-    return Iap;
+    return Iap
 
 
 class fClass(object):
@@ -248,44 +248,44 @@ class fClass(object):
     def forecast(self):
         # calculate volume - area/height relationship parameters
         self.Ac = self.n.multiply(self.pArea)
-        self.h0 = ee.Image(1);
+        self.h0 = ee.Image(1)
 
         pondMin = ee.Number(elv.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.min(),
           scale=30
-        ).get('elevation'));
-        SoInit = ee.Image(0).where(elv.gte(pondMin).And(elv.lte(pondMin.add(3))),1);
+        ).get('elevation'))
+        SoInit = ee.Image(0).where(elv.gte(pondMin).And(elv.lte(pondMin.add(3))),1)
         self.So = ee.Image(ee.Number(SoInit.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.sum(),
           scale=30
-        ).get('constant'))).multiply(900);
+        ).get('constant'))).multiply(900)
 
         # begin forecasting water area
         forecastDays = 15
         modelDate = self.initTime
 
         # calculate initial conditions
-        A = ee.Image(self.pArea).multiply(self.initial);
-        hInit = A.divide(self.So).pow(self.h0.divide(self.alpha));
-        self.Vo = self.So.multiply(self.h0).divide(self.alpha.add(1));
+        A = ee.Image(self.pArea).multiply(self.initial)
+        hInit = A.divide(self.So).pow(self.h0.divide(self.alpha))
+        self.Vo = self.So.multiply(self.h0).divide(self.alpha.add(1))
 
         precipData = gfs.filterDate(modelDate,modelDate.advance(1,'hour'))\
                         .filterMetadata('forecast_hours','greater_than',0)\
                         .select(['total_precipitation_surface'],['precip'])
-        dailyPrecip = accumGFS(precipData,modelDate,forecastDays);
+        dailyPrecip = accumGFS(precipData,modelDate,forecastDays)
 
-        initIap = calcInitIap(cfs,modelDate,7);
+        initIap = calcInitIap(cfs,modelDate,7)
 
         # set model start with t-1 forcing
         first = ee.Image(cfs.filterDate(modelDate.advance(-1,'day'),modelDate).select(['precip']).sum())\
               .multiply(ee.Image(86400).divide(ee.Image(1e3))).addBands(initIap.multiply(1000))\
               .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
               .rename(['precip','Iap','vol','area','height']).clip(studyArea)\
-              .set('system:time_start',modelDate.advance(-6,'hour').millis()).float();
+              .set('system:time_start',modelDate.advance(-6,'hour').millis()).float()
 
-        modelOut = ee.ImageCollection.fromImages(dailyPrecip.iterate(self._accumVolume,ee.List([first])));
+        modelOut = ee.ImageCollection.fromImages(dailyPrecip.iterate(self._accumVolume,ee.List([first])))
 
         pondPct = modelOut.select('area').map(self._pctArea)
 
@@ -294,41 +294,41 @@ class fClass(object):
 
     def _accumVolume(self,img,imgList):
         # extract out forcing and state variables
-        past = ee.Image(ee.List(imgList).get(-1)).clip(studyArea);
-        pastIt = past.select('Iap');
-        pastPr = past.select('precip');
-        pastAr = past.select('area');
-        #pastHt = past.select('height');
-        pastVl = past.select('vol');
-        nowPr = img.select('precip').clip(studyArea);
-        date = ee.Date(img.get('system:time_start'));
+        past = ee.Image(ee.List(imgList).get(-1)).clip(studyArea)
+        pastIt = past.select('Iap')
+        pastPr = past.select('precip')
+        pastAr = past.select('area')
+        #pastHt = past.select('height')
+        pastVl = past.select('vol')
+        nowPr = img.select('precip').clip(studyArea)
+        date = ee.Date(img.get('system:time_start'))
 
         # change in volume model
-        deltaIt = pastIt.add(pastPr).multiply(self.k);
-        Gt = self.Gmax.subtract(deltaIt);
-        Gt = Gt.where(Gt.lt(0),0);
-        Pe = nowPr.subtract(Gt);
-        Pe = Pe.where(Pe.lt(0),0);
-        Qin = self.Kr.multiply(Pe).multiply(self.Ac);
-        dV = nowPr.multiply(self.pArea).add(Qin).subtract(self.L.multiply(pastAr));
+        deltaIt = pastIt.add(pastPr).multiply(self.k)
+        Gt = self.Gmax.subtract(deltaIt)
+        Gt = Gt.where(Gt.lt(0),0)
+        Pe = nowPr.subtract(Gt)
+        Pe = Pe.where(Pe.lt(0),0)
+        Qin = self.Kr.multiply(Pe).multiply(self.Ac)
+        dV = nowPr.multiply(self.pArea).add(Qin).subtract(self.L.multiply(pastAr))
         # convert dV to actual volume
-        volume = pastVl.add(dV).rename('vol');
-        volume = volume.where(volume.lt(0),0);
+        volume = pastVl.add(dV).rename(['vol'])
+        volume = volume.where(volume.lt(0),0)
 
         # empirical model for volume to area/height relationship
         ht = volume.divide(self.Vo).pow(ee.Image(1).divide(self.alpha))\
-                  .divide(ee.Image(1).divide(self.h0)).rename('height');
-        area = self.So.multiply(ht.divide(self.h0).pow(self.alpha)).rename('area');
-        area = area.where(area.lt(0),1); # contrain area to real values
+                  .divide(ee.Image(1).divide(self.h0)).rename(['height'])
+        area = self.So.multiply(ht.divide(self.h0).pow(self.alpha)).rename(['area'])
+        area = area.where(area.lt(0),1) # contrain area to real values
 
         # set state variables to output model step
         step = nowPr.addBands(deltaIt).addBands(volume).addBands(area).addBands(ht)\
-                  .set('system:time_start',date.advance(6,'hour').millis());
+                  .set('system:time_start',date.advance(6,'hour').millis())
 
-        return ee.List(imgList).add(step.float());
+        return ee.List(imgList).add(step.float())
 
     def _pctArea(self,img):
-        pct = img.divide(ee.Image(self.pArea)).copyProperties(img,['system:time_start']);
+        pct = img.divide(ee.Image(self.pArea)).copyProperties(img,['system:time_start'])
         return pct#.rename('pctArea')#.where(pct.gt(1),1)
 
 

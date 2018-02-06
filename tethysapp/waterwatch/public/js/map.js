@@ -158,7 +158,7 @@ var LIBRARY_OBJECT = (function() {
         //Map on zoom function. To keep track of the zoom level. Data can only be viewed can only be added at a certain zoom level.
         map.on("moveend", function() {
             var zoom = map.getView().getZoom();
-            var zoomInfo = '<p style="color:white;">Current Zoom level = ' + zoom+'.</p>';
+            var zoomInfo = '<p style="color:white;">Current Zoom level = ' + parseFloat(zoom,3)+'.</p>';
             document.getElementById('zoomlevel').innerHTML = zoomInfo;
             if (zoom > 14){
                 base_map2.setVisible(true);
@@ -190,8 +190,11 @@ var LIBRARY_OBJECT = (function() {
             $("#current-lat").val(proj_coords[1]);
             $("#current-lon").val(proj_coords[0]);
             var $loading = $('#view-file-loading');
+            var $loadingF = $('#f-view-file-loading');
             $loading.removeClass('hidden');
+            $loadingF.removeClass('hidden');
             $("#plotter").addClass('hidden');
+            $("#forecast-plotter").addClass('hidden');
             //$tsplotModal.modal('show');
             var xhr = ajax_update_database('timeseries',{'lat':proj_coords[1],'lon':proj_coords[0]});
             xhr.done(function(data) {
@@ -217,9 +220,9 @@ var LIBRARY_OBJECT = (function() {
 
                 }
               });
-            var $loadingF = $('#f-view-file-loading');
-            $loadingF.removeClass('hidden');
-            $("#forecast-plotter").addClass('hidden');
+
+
+
             var yhr = ajax_update_database('forecast',{'lat':proj_coords[1],'lon':proj_coords[0]});
             yhr.done(function(data) {
                 if("success" in data) {
@@ -245,18 +248,18 @@ var LIBRARY_OBJECT = (function() {
                 }
             });
             });
-            map.on('pointermove', function(evt) {
-                if (evt.dragging) {
-                    return;
-                }
-                var pixel = map.getEventPixel(evt.originalEvent);
-                var hit = map.forEachLayerAtPixel(pixel, function(layer) {
-                    if (layer != layers[0]){
-                        current_layer = layer;
-                        return true;}
-                });
-                map.getTargetElement().style.cursor = hit ? 'pointer' : '';
-      });
+      //       map.on('pointermove', function(evt) {
+      //           if (evt.dragging) {
+      //               return;
+      //           }
+      //           var pixel = map.getEventPixel(evt.originalEvent);
+      //           var hit = map.forEachLayerAtPixel(pixel, function(layer) {
+      //               if (layer == layers[2]){
+      //                   current_layer = layer;
+      //                   return true;}
+      //           });
+      //           map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+      // });
       };
 
     generate_chart = function(data,lat,lon){
