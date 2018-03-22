@@ -336,7 +336,7 @@ class fClass(object):
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
-ponds = ee.FeatureCollection('users/kelmarkert/public/ferloPonds')
+ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds')
 today = time.strftime("%Y-%m-%d")
 
 iniTime = ee.Date('2015-01-01')
