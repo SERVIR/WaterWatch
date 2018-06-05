@@ -13,7 +13,7 @@ class Waterwatch(TethysAppBase):
     root_url = 'waterwatch'
     color = '#2c3e50'
     description = 'View Ferlo Ephemeral Water Bodies in Senegal'
-    tags = 'Hydrology'
+    tags = 'Hydrology', 'Remote-Sensing'
     enable_feedback = False
     feedback_emails = []
 
