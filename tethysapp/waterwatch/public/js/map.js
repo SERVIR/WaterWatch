@@ -196,7 +196,7 @@ var LIBRARY_OBJECT = (function() {
             $("#plotter").addClass('hidden');
             $("#forecast-plotter").addClass('hidden');
             //$tsplotModal.modal('show');
-            var xhr = ajax_update_database('timeseries',{'lat':proj_coords[1],'lon':proj_coords[0]});
+            var xhr = ajax_update_database('timeseries',{'lat':proj_coords[1],'lon':proj_coords[0]},'name');
             xhr.done(function(data) {
                 if("success" in data) {
                     $('.info').html('');
@@ -208,7 +208,7 @@ var LIBRARY_OBJECT = (function() {
                     map.getLayers().item(5).getSource().clear();
                     select_feature_source.addFeature(feature);
 
-                    generate_chart(data.values,proj_coords[1],proj_coords[0]);
+                    generate_chart(data.values,proj_coords[1],proj_coords[0],data.name);
 
                     $loading.addClass('hidden');
                     $("#plotter").removeClass('hidden');
@@ -223,7 +223,7 @@ var LIBRARY_OBJECT = (function() {
 
 
 
-            var yhr = ajax_update_database('forecast',{'lat':proj_coords[1],'lon':proj_coords[0]});
+            var yhr = ajax_update_database('forecast',{'lat':proj_coords[1],'lon':proj_coords[0]},'name');
             yhr.done(function(data) {
                 if("success" in data) {
                     $('.info').html('');
@@ -235,7 +235,7 @@ var LIBRARY_OBJECT = (function() {
                     map.getLayers().item(5).getSource().clear();
                     select_feature_source.addFeature(feature);
 
-                    generate_forecast(data.values,proj_coords[1],proj_coords[0]);
+                    generate_forecast(data.values,proj_coords[1],proj_coords[0],data.name);
 
                     $loadingF.addClass('hidden');
                     $("#forecast-plotter").removeClass('hidden');
@@ -262,7 +262,7 @@ var LIBRARY_OBJECT = (function() {
       // });
       };
 
-    generate_chart = function(data,lat,lon){
+    generate_chart = function(data,lat,lon,name){
         Highcharts.stockChart('plotter',{
             chart: {
                 type:'line',
@@ -304,7 +304,7 @@ var LIBRARY_OBJECT = (function() {
                 }
             },
             title: {
-                text:'Percent coverage of water at '+(lon.toFixed(3))+','+(lat.toFixed(3))
+                text:'Percent coverage of water at '+(name)+' ('+(lon.toFixed(3))+','+(lat.toFixed(3))+')'
                 // style: {
                 //     fontSize: '13px',
                 //     fontWeight: 'bold'
@@ -336,7 +336,7 @@ var LIBRARY_OBJECT = (function() {
             }]
         });
     };
-    generate_forecast = function(data,lat,lon){
+    generate_forecast = function(data,lat,lon,name){
         Highcharts.stockChart('forecast-plotter',{
           chart: {
               type:'line',
@@ -378,7 +378,7 @@ var LIBRARY_OBJECT = (function() {
               }
           },
           title: {
-              text:'Percent coverage of water at '+(lon.toFixed(3))+','+(lat.toFixed(3))
+              text:'Percent coverage of water at '+(name)+' ('+(lon.toFixed(3))+','+(lat.toFixed(3))+')'
               // style: {
               //     fontSize: '13px',
               //     fontWeight: 'bold'

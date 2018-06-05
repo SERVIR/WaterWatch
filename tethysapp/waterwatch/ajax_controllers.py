@@ -15,9 +15,10 @@ def timeseries(request):
         lon = info.get('lon')
 
         try:
-            ts_vals,coordinates = checkFeature(lon,lat)
+            ts_vals,coordinates,name = checkFeature(lon,lat)
             return_obj["values"] = ts_vals
             return_obj["coordinates"] = coordinates
+            return_obj["name"] = name
             return_obj["success"] = "success"
 
         except Exception as e:
@@ -34,9 +35,10 @@ def forecast(request):
         lon = info.get('lon')
 
     try:
-        ts_vals,coordinates = forecastFeature(lon,lat)
+        ts_vals,coordinates,name = forecastFeature(lon,lat)
         return_obj["values"] = ts_vals
         return_obj["coordinates"] = coordinates
+        return_obj["name"] = name
         return_obj["success"] = "success"
     except Exception as e:
         return_obj["error"] = "Error Processing Request. Error: "+ str(e)

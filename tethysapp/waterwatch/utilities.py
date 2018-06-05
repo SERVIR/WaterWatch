@@ -17,6 +17,8 @@ except EEException as e:
     scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
     ee.Initialize(credentials)
 
+def addArea(feature):
+    return feature.set('area',feature.area());
 
 def rescale(img, thresholds):
     return img.subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
@@ -336,7 +338,8 @@ class fClass(object):
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
-ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds')
+ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds')\
+                .map(addArea).filter(ee.Filter.gt("area",10000))
 today = time.strftime("%Y-%m-%d")
 
 iniTime = ee.Date('2015-01-01')
@@ -391,8 +394,13 @@ def checkFeature(lon,lat):
     selPond = filterPond(lon,lat)
 
     ts_values = makeTimeSeries(waterCollection.select('water'),selPond,key='water')
+    name = selPond.getInfo()['features'][0]['properties']['Nom']
+    if len(name) < 2:
+        name = ' Unnamed Pond'
+
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
-    return ts_values,coordinates
+    return ts_values,coordinates,name
+
 
 def forecastFeature(lon,lat):
 
@@ -407,10 +415,14 @@ def forecastFeature(lon,lat):
     fModel = fClass(selPond,pondFraction,lastTime)
 
     ts_values = fModel.forecast()
+    name = selPond.getInfo()['features'][0]['properties']['Nom']
+    if len(name) < 2:
+        name = ' Unnamed Pond'
+
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
 
 
-    return ts_values,coordinates
+    return ts_values,coordinates,name
 
 def getMNDWI(lon,lat,xValue,yValue):
 
