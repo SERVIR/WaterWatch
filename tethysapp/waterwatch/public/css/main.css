@@ -1,9 +1,15 @@
 #app-content-wrapper #app-content {
+    padding-bottom:0;
+    margin:0;
     height: 100%;
+}
+#app-content-wrapper #app-content #app-actions{
+    display:none;
 }
 
 #inner-app-content {
-    padding-top: 0;
+    padding:0;
+    margin:0;
     height: 100%;
 }
 
