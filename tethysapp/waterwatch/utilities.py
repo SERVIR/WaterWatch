@@ -42,7 +42,7 @@ def s2CloudMask(img):
     score=score.min(rescale(ndsi, [0.8, 0.6]))
     score = score.multiply(100).byte().lte(10).rename(['cloudMask'])
     img = img.updateMask(score.Or(qa.lt(1024)))
-    return img.divide(10000).set("system:time_start", img.get("system:time_start"))
+    return img.divide(10000).set("system:time_start", img.get("system:time_start"),'CLOUD_COVER',img.get('CLOUD_COVERAGE_ASSESSMENT'))
 
 
 def lsCloudMask(img):
@@ -106,13 +106,20 @@ def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
 
 
 def calcWaterIndex(img):
-    mndwi = img.normalizedDifference(['green', 'swir1']).rename(['mndwi'])
+    mndwi = img.expression('0.1511*B1 + 0.1973*B2 + 0.3283*B3 + 0.3407*B4 + -0.7117*B5 + -0.4559*B7',{
+        'B1': img.select('blue'),
+        'B2': img.select('green'),
+        'B3': img.select('red'),
+        'B4': img.select('nir'),
+        'B5': img.select('swir1'),
+        'B7': img.select('swir2'),
+    }).rename('mndwi')
 
     return mndwi.copyProperties(img, ["system:time_start","CLOUD_COVER"])
 
 
 def waterClassifier(img):
-    THRESHOLD = ee.Number(-0.2)
+    THRESHOLD = ee.Number(-0.1304)
 
     mask = img.mask()
 
@@ -127,7 +134,7 @@ def pondClassifier(shape):
 
     avg = latest.reduceRegion(
         reducer=ee.Reducer.mean(),
-        scale=30,
+        scale=10,
         geometry=shape.geometry(),
         bestEffort=True
     )
@@ -148,7 +155,7 @@ def makeTimeSeries(collection,feature,key=None):
 
     def reducerMapping(img):
         reduction = img.reduceRegion(
-            ee.Reducer.mean(), feature.geometry(), 30)
+            ee.Reducer.mean(), feature.geometry(), 10)
 
         time = img.get('system:time_start')
 
@@ -410,7 +417,7 @@ def forecastFeature(lon,lat):
 
     lastTime = ee.Date(featureImg.get('system:time_start'))
 
-    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 30).get('water'))
+    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water'))
 
     fModel = fClass(selPond,pondFraction,lastTime)
 
