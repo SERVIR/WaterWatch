@@ -337,8 +337,8 @@ class fClass(object):
         return ee.List(imgList).add(step.float())
 
     def _pctArea(self,img):
-        pct = img.divide(ee.Image(self.pArea)).copyProperties(img,['system:time_start'])
-        return pct#.rename('pctArea')#.where(pct.gt(1),1)
+        pct = ee.Image(img.divide(ee.Image(self.pArea)).copyProperties(img,['system:time_start']))
+        return pct.where(pct.gt(1),1)#.rename('pctArea')#
 
 
 
