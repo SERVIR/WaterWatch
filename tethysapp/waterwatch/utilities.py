@@ -342,10 +342,10 @@ class fClass(object):
 
 
 
-studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
+studyArea = ee.Geometry.Rectangle([32.3, 5.7, 43.0, -4.4])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
-ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds')\
+ponds = ee.FeatureCollection('users/sarvapulla/public/kenya_ponds')\
                 .map(addArea).filter(ee.Filter.gt("area",10000))
 today = time.strftime("%Y-%m-%d")
 
@@ -390,9 +390,10 @@ def filterPond(lon, lat):
     point = ee.Geometry.Point(float(lon), float(lat))
     sampledPoint = ee.Feature(ponds.filterBounds(point).first())
 
-    computedValue = sampledPoint.getInfo()['properties']['uniqID']
+    #computedValue = sampledPoint.getInfo()['id']
+    computedValue = sampledPoint.getInfo()['properties']['Name']
 
-    selPond = ponds.filter(ee.Filter.eq('uniqID', computedValue))
+    selPond = ponds.filter(ee.Filter.eq('Name', computedValue))
 
     return selPond
 
@@ -401,7 +402,7 @@ def checkFeature(lon,lat):
     selPond = filterPond(lon,lat)
 
     ts_values = makeTimeSeries(waterCollection.select('water'),selPond,key='water')
-    name = selPond.getInfo()['features'][0]['properties']['Nom']
+    name = selPond.getInfo()['features'][0]['properties']['Name']
     if len(name) < 2:
         name = ' Unnamed Pond'
 
@@ -422,7 +423,7 @@ def forecastFeature(lon,lat):
     fModel = fClass(selPond,pondFraction,lastTime)
 
     ts_values = fModel.forecast()
-    name = selPond.getInfo()['features'][0]['properties']['Nom']
+    name = selPond.getInfo()['features'][0]['properties']['Name']
     if len(name) < 2:
         name = ' Unnamed Pond'
 

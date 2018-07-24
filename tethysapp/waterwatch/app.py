@@ -6,13 +6,13 @@ class Waterwatch(TethysAppBase):
     Tethys app class for Ferlo Ephemeral Water Body Monitoring Dashboard.
     """
 
-    name = 'Ferlo Ephemeral Water Body Monitoring Dashboard'
+    name = 'Kenya Ephmeral Water Body Monitoring Dashboard'
     index = 'waterwatch:home'
     icon = 'waterwatch/images/logo_2.png'
     package = 'waterwatch'
     root_url = 'waterwatch'
     color = '#2c3e50'
-    description = 'View Ferlo Ephemeral Water Bodies in Senegal'
+    description = 'View Ephemeral Water Bodies in Kenya'
     tags = 'Hydrology', 'Remote-Sensing'
     enable_feedback = False
     feedback_emails = []

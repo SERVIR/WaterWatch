@@ -127,7 +127,7 @@ var LIBRARY_OBJECT = (function() {
             target: 'map',
             layers: layers,
             view: new ol.View({
-                center: ol.proj.fromLonLat([-14.45,14.4974]),
+                center: ol.proj.fromLonLat([37.9,0.0]),
                 zoom: 10
             })
         });
@@ -192,9 +192,9 @@ var LIBRARY_OBJECT = (function() {
             var $loading = $('#view-file-loading');
             var $loadingF = $('#f-view-file-loading');
             $loading.removeClass('hidden');
-            $loadingF.removeClass('hidden');
+            //$loadingF.removeClass('hidden');
             $("#plotter").addClass('hidden');
-            $("#forecast-plotter").addClass('hidden');
+            //$("#forecast-plotter").addClass('hidden');
             //$tsplotModal.modal('show');
             var xhr = ajax_update_database('timeseries',{'lat':proj_coords[1],'lon':proj_coords[0]},'name');
             xhr.done(function(data) {
@@ -222,31 +222,6 @@ var LIBRARY_OBJECT = (function() {
               });
 
 
-
-            var yhr = ajax_update_database('forecast',{'lat':proj_coords[1],'lon':proj_coords[0]},'name');
-            yhr.done(function(data) {
-                if("success" in data) {
-                    $('.info').html('');
-                    map.getLayers().item(3).getSource().setUrl("");
-                    var polygon = new ol.geom.Polygon(data.coordinates);
-                    polygon.applyTransform(ol.proj.getTransform('EPSG:4326', 'EPSG:3857'));
-                    var feature = new ol.Feature(polygon);
-
-                    map.getLayers().item(5).getSource().clear();
-                    select_feature_source.addFeature(feature);
-
-                    generate_forecast(data.values,proj_coords[1],proj_coords[0],data.name);
-
-                    $loadingF.addClass('hidden');
-                    $("#forecast-plotter").removeClass('hidden');
-
-                }else{
-                    $('.info').html('<b>Error processing the request. Please be sure to click on a feature.'+data.error+'</b>');
-                    $('#info').removeClass('hidden');
-                    $loadingF.addClass('hidden');
-
-                }
-            });
             });
       //       map.on('pointermove', function(evt) {
       //           if (evt.dragging) {
