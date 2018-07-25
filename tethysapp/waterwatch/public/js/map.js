@@ -75,9 +75,10 @@ var LIBRARY_OBJECT = (function() {
             })
         });
 
+	
 
 
-        var west_africa = new ol.Feature(new ol.geom.Polygon([[[-2025275.5014440303,1364859.5770601076],[-1247452.3016140766,1364859.5770601076],[-1247452.3016140766,1898084.286377496],[-2025275.5014440303,1898084.286377496],[-2025275.5014440303,1364859.5770601076]]]));
+        var west_africa = new ol.Feature(new ol.geom.Polygon([[[3726269.6745,-559906.066744],[4718556.09827,-559906.066744],[4718556.09827,590846.62487],[3726269.6745,590846.62487],[3726269.6745,-559906.066744]]]));
 
         var boundary_layer = new ol.layer.Vector({
             title:'Boundary Layer',
@@ -128,7 +129,7 @@ var LIBRARY_OBJECT = (function() {
             layers: layers,
             view: new ol.View({
                 center: ol.proj.fromLonLat([37.9,0.0]),
-                zoom: 10
+                zoom: 8
             })
         });
 
