@@ -5,16 +5,14 @@ import json
 import math
 import random
 import datetime,time
+from . import config
 
 try:
     ee.Initialize()
 except EEException as e:
-    from oauth2client.service_account import ServiceAccountCredentials
-    credentials = ServiceAccountCredentials.from_p12_keyfile(
-    service_account_email='',
-    filename='',
-    private_key_password='notasecret',
-    scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
+    service_account=config.EE_SERVICE_ACCOUNT
+    secret_key=config.EE_SECRET_KEY
+    credentials = ee.ServiceAccountCredentials(service_account, secret_key) 
     ee.Initialize(credentials)
 
 def addArea(feature):
