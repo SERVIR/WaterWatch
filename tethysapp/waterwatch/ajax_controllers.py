@@ -63,10 +63,8 @@ def mndwi(request):
 
         try:
             true_img,mndwi_img,properties = getMNDWI(lon,lat,x_val,y_val)
-            return_obj["water_mapid"] = mndwi_img["mapid"]
-            return_obj["water_token"] = mndwi_img["token"]
-            return_obj["true_mapid"] = true_img["mapid"]
-            return_obj["true_token"] = true_img["token"]
+	    return_obj['water_mapurl'] = mndwi_img['tile_fetcher'].url_format
+            return_obj['true_mapurl'] = true_img['tile_fetcher'].url_format
             return_obj["date"] = clicked_date
             return_obj["cloud_cover"] = properties["CLOUD_COVER"]
             return_obj["success"] = "success"

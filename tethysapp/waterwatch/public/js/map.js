@@ -298,8 +298,8 @@ var LIBRARY_OBJECT = (function() {
                                 var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                                 xhr.done(function(data) {
                                     if("success" in data) {
-                                        map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.true_mapid+"/{z}/{x}/{y}?token="+data.true_token);
-                                        map.getLayers().item(4).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
+                                        map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
+                                        map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
                                         $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                         $("#reset").removeClass('hidden');
                                         $("#layers_checkbox").removeClass('hidden');
@@ -373,8 +373,8 @@ var LIBRARY_OBJECT = (function() {
                               var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                               xhr.done(function(data) {
                                   if("success" in data) {
-                                      map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.true_mapid+"/{z}/{x}/{y}?token="+data.true_token);
-                                      map.getLayers().item(4).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
+                                      map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
+                                      map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
                                       $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                       $("#reset").removeClass('hidden');
                                       $("#layers_checkbox").removeClass('hidden');
