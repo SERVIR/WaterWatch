@@ -5,7 +5,7 @@
 {% block styles %}
 {{ block.super }}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-<link rel="stylesheet" href="https://openlayers.org/en/v4.3.4/css/ol.css" type="text/css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.6.5/ol.css" type="text/css">
 {% endblock %}
 
 {% block global_scripts %}
@@ -19,7 +19,7 @@
 <!--<script src="https://code.highcharts.com/stock/modules/exporting.js"></script>-->
 <!--<script src="http://code.highcharts.com/modules/exporting.js"></script>-->
 <!--<script src="http://highcharts.github.io/export-csv/export-csv.js"></script>-->
-<script src="https://openlayers.org/en/v4.3.4/build/ol.js" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.6.5/ol.js" type="text/javascript"></script>
 {% endblock %}
 
 
@@ -106,7 +106,7 @@
 
 
 
-<div id="layers" name="layers" data-ponds-mapid="{{ponds_mapid}}" data-ponds-token="{{ponds_token}}" style="display:none;">
+<div id="layers" name="layers" data-ponds-mapurl="{{ponds_mapurl}}" style="display:none;">
     {% endblock %}
 
     {# Use the after_app_content block for modals #}

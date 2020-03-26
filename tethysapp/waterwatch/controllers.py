@@ -10,8 +10,7 @@ def home(request):
     ponds = initLayers()
 
     context = {
-        'ponds_mapid':ponds['mapid'],
-        'ponds_token':ponds['token']
+	'ponds_mapurl':ponds['tile_fetcher'].url_format
     }
 
     return render(request, 'waterwatch/home.html', context)

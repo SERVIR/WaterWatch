@@ -21,6 +21,7 @@ var LIBRARY_OBJECT = (function() {
         current_layer,
         layers,
         map,
+	ponds_mapurl,
         ponds_mapid,
         ponds_token,
         public_interface,				// Object returned by the module
@@ -51,8 +52,9 @@ var LIBRARY_OBJECT = (function() {
 
     init_vars = function(){
         var $layers_element = $('#layers');
-        ponds_mapid = $layers_element.attr('data-ponds-mapid');
-        ponds_token = $layers_element.attr('data-ponds-token');
+	ponds_mapurl = $layers_element.attr('data-ponds-mapurl');
+        //ponds_mapid = $layers_element.attr('data-ponds-mapid');
+        //ponds_token = $layers_element.attr('data-ponds-token');
         $chartModal = $("#chart-modal");
     };
 
@@ -103,7 +105,7 @@ var LIBRARY_OBJECT = (function() {
 
         var ponds_layer = new ol.layer.Tile({
             source: new ol.source.XYZ({
-                url: "https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
+                url: ponds_mapurl //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
             })
         });
 
