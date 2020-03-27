@@ -3,18 +3,16 @@ from ee.ee_exception import EEException
 import requests
 import json
 import math
-import numpy as np
+import random
 import datetime,time
+from . import config
 
 try:
     ee.Initialize()
 except EEException as e:
-    from oauth2client.service_account import ServiceAccountCredentials
-    credentials = ServiceAccountCredentials.from_p12_keyfile(
-    service_account_email='',
-    filename='',
-    private_key_password='notasecret',
-    scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
+    service_account=config.EE_SERVICE_ACCOUNT
+    secret_key=config.EE_SECRET_KEY
+    credentials = ee.ServiceAccountCredentials(service_account, secret_key) 
     ee.Initialize(credentials)
 
 def addArea(feature):
@@ -40,31 +38,122 @@ def s2CloudMask(img):
     # However, clouds are not snow.
     ndsi = img.normalizedDifference(['B3', 'B11'])
     score=score.min(rescale(ndsi, [0.8, 0.6]))
-    score = score.multiply(100).byte().lte(10).rename(['cloudMask'])
-    img = img.updateMask(score.Or(qa.lt(1024)))
-    return img.divide(10000).set("system:time_start", img.get("system:time_start"),'CLOUD_COVER',img.get('CLOUD_COVERAGE_ASSESSMENT'))
+    score = score.multiply(100).byte().lte(cloudThresh)
+    mask = score.And(qa.lt(1024)).rename(['cloudMask'])\
+                .clip(img.geometry())
+    img = img.addBands(mask)
+    return img.divide(10000).set("system:time_start", img.get("system:time_start"),
+                                 'CLOUD_COVER',img.get('CLOUD_COVERAGE_ASSESSMENT'),
+                                 'SUN_AZIMUTH',img.get('MEAN_SOLAR_AZIMUTH_ANGLE'),
+                                 'SUN_ZENITH',img.get('MEAN_SOLAR_ZENITH_ANGLE'),
+                                 'scale',ee.Number(10))
 
 
 def lsCloudMask(img):
     blank = ee.Image(0)
     scored = ee.Algorithms.Landsat.simpleCloudScore(img)
-    clouds = blank.where(scored.select(['cloud']).lte(cloudThresh), 1)
-    return img.updateMask(clouds).set("system:time_start", img.get("system:time_start"))
+    clouds = blank.where(scored.select(['cloud']).lte(cloudThresh), 1)\
+                .clip(img.geometry())
+    img = img.addBands(clouds.rename(['cloudMask']))
+    return img.updateMask(clouds).set("system:time_start", img.get("system:time_start"),
+                   "SUN_ZENITH",ee.Number(90).subtract(img.get('SUN_ELEVATION')),
+                   "scale",ee.Number(30))
+
+
+def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
+    def darkMask(img):
+        zScore = img.select(shadowSumBands).subtract(irMean).divide(irStdDev)
+        irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum())
+        TDOMMask = zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2).And(irSum.lt(shadowSumThresh)).Not()
+        TDOMMask = TDOMMask.focal_min(dilatePixels)
+        img = img.addBands(TDOMMask.rename(['TDOMMask']))
+        # Combine the cloud and shadow masks
+        combinedMask = img.select('cloudMask').mask().And(img.select('TDOMMask'))\
+            .rename('cloudShadowMask');
+        return img.addBands(combinedMask).updateMask(combinedMask)
+
+    shadowSumBands = ['nir','swir1','swir2']
+    irStdDev = collection.select(shadowSumBands).reduce(ee.Reducer.stdDev())
+    irMean = collection.select(shadowSumBands).mean()
+
+    collection = collection.map(darkMask)
+
+    return collection
 
 
 def lsTOA(img):
     return ee.Algorithms.Landsat.TOA(img)
 
+# Function for wrapping cloud and shadow masking together.
+# Assumes image has cloud mask band called "cloudMask" and a TDOM mask called "TDOMMask".
+def cloudProject(img):
+
+    azimuthField = 'SUN_AZIMUTH'
+    zenithField = 'SUN_ZENITH'
+
+    def projectHeights(cloudHeight):
+      cloudHeight = ee.Number(cloudHeight);
+      shadowCastedDistance = zenR.tan().multiply(cloudHeight); #Distance shadow is cast
+      x = azR.cos().multiply(shadowCastedDistance).divide(nominalScale).round(); #X distance of shadow
+      y = azR.sin().multiply(shadowCastedDistance).divide(nominalScale).round(); #Y distance of shadow
+      return cloud.changeProj(proj, proj.translate(x, y));
+
+    # Get the cloud mask
+    cloud = img.select(['cloudMask']).Not();
+    cloud = cloud.focal_max(dilatePixels);
+    cloud = cloud.updateMask(cloud);
+
+    # Get TDOM mask
+    TDOMMask = img.select(['TDOMMask']).Not();
+
+    # Project the shadow finding pixels inside the TDOM mask that are dark and
+    # inside the expected area given the solar geometry
+    # Find dark pixels
+    darkPixels = img.select(['nir','swir1','swir2'])\
+      .reduce(ee.Reducer.sum()).lt(shadowSumThresh);#.gte(1);
+
+    proj = img.select('cloudMask').projection()
+
+    # Get scale of image
+    nominalScale = proj.nominalScale();
+
+    #Find where cloud shadows should be based on solar geometry
+    #Convert to radians
+    meanAzimuth = img.get(azimuthField);
+    meanZenith = img.get(zenithField);
+    azR = ee.Number(meanAzimuth).multiply(math.pi).divide(180.0)\
+      .add(ee.Number(0.5).multiply(math.pi));
+    zenR = ee.Number(0.5).multiply(math.pi)\
+      .subtract(ee.Number(meanZenith).multiply(math.pi).divide(180.0));
+
+    # Find the shadows
+    shadows = cloudHeights.map(projectHeights);
+
+    shadow = ee.ImageCollection.fromImages(shadows).max();
+
+    # Create shadow mask
+    shadow = shadow.updateMask(cloud.mask().Not());
+    shadow = shadow.focal_max(dilatePixels);
+    shadow = shadow.updateMask(darkPixels.And(TDOMMask));
+
+    # Combine the cloud and shadow masks
+    combinedMask = cloud.mask().Or(shadow.mask()).eq(0);
+
+    # Update the image's mask and return the image
+    img = img.updateMask(combinedMask);
+    img = img.addBands(combinedMask.rename(['cloudShadowMask']));
+    return img.clip(img.geometry());
+
 
 def mergeCollections(l8, s2, studyArea, t1, t2):
     lc8rename = l8.filterBounds(studyArea).filterDate(t1, t2).map(lsTOA).filter(
-        ee.Filter.lt('CLOUD_COVER', 75)).map(lsCloudMask).select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
-                                                                 ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'])
+        ee.Filter.lt('CLOUD_COVER', 75)).map(lsCloudMask).select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7','cloudMask'],
+                                                                 ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask'])
 
     st2rename = s2.filterBounds(studyArea).filterDate(t1, t2).filter(
         ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(s2CloudMask).select(
-        ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'],
-        ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'])#.map(bandPassAdjustment)
+        ['B2', 'B3', 'B4', 'B8', 'B11', 'B12','cloudMask'],
+        ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask'])#.map(bandPassAdjustment)
 
     return ee.ImageCollection(lc8rename.merge(st2rename))
 
@@ -87,24 +176,6 @@ def bandPassAdjustment(img):
     return componentsImage.set('system:time_start',img.get('system:time_start'))
 
 
-def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
-    def darkMask(img):
-        zScore = img.select(shadowSumBands).subtract(irMean).divide(irStdDev)
-        irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum())
-        TDOMMask = zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2).And(irSum.lt(shadowSumThresh)).Not()
-        TDOMMask = TDOMMask.focal_min(dilatePixels)
-        return img.addBands(TDOMMask.rename(['TDOMMask']))
-
-    shadowSumBands = ['nir', 'swir1']
-    irStdDev = collection.select(shadowSumBands).reduce(ee.Reducer.stdDev())
-    irMean = collection.select(shadowSumBands).mean()
-    collection.select(shadowSumBands).mean()
-
-    collection = collection.map(darkMask)
-
-    return collection
-
-
 def calcWaterIndex(img):
     mndwi = img.expression('0.1511*B1 + 0.1973*B2 + 0.3283*B3 + 0.3407*B4 + -0.7117*B5 + -0.4559*B7',{
         'B1': img.select('blue'),
@@ -115,22 +186,26 @@ def calcWaterIndex(img):
         'B7': img.select('swir2'),
     }).rename('mndwi')
 
-    return mndwi.copyProperties(img, ["system:time_start","CLOUD_COVER"])
+    return mndwi.addBands(img.select('cloudShadowMask')).copyProperties(img, ["system:time_start","CLOUD_COVER"])
 
 
 def waterClassifier(img):
     THRESHOLD = ee.Number(-0.1304)
 
-    mask = img.mask()
-
-    water = ee.Image(0).where(mask, img.select('mndwi').gt(THRESHOLD))
+    water = ee.Image(0).where(img.select('cloudShadowMask'), img.select('mndwi').gt(THRESHOLD))
 
     result = img.addBands(water.rename(['water']))
     return result.copyProperties(img, ["system:time_start","CLOUD_COVER"])
 
 
 def pondClassifier(shape):
-    latest = ee.Image(waterCollection.select('water').filterBounds(shape.geometry()).first())
+    waterList = waterCollection.filterBounds(shape.geometry())\
+                .sort('system:time_start',False)
+    latest = ee.Image(waterList.first())
+    # dates = ee.Array(waterCollection.aggregate_array('system:time_start'))
+
+    # true = ee.Image(ee.Algorithms.If(latest.geometry().contains(shape.geometry),latest,
+    #         waterList.get(1)))
 
     avg = latest.reduceRegion(
         reducer=ee.Reducer.mean(),
@@ -141,25 +216,32 @@ def pondClassifier(shape):
 
     try:
         val = ee.Number(avg.get('water'))
+        mVal = ee.Number(avg.get('cloudShadowMask'))
 
-        cls = val.gt(0.25)
+        test = ee.Number(ee.Algorithms.If(mVal.lt(0.5),ee.Number(3),ee.Number(0)))
+        cls = test.add(val.gt(0.25))
 
         cls = cls.add(val.gt(0.75))
     except:
-        val = np.random.choice(2, 1)
-        cls = ee.Number(val[0])
+        val = random.choice(range(2))
+        cls = ee.Number(val)
 
     return ee.Feature(shape).set({'pondCls': cls.int8()})
 
-def makeTimeSeries(collection,feature,key=None):
+def makeTimeSeries(collection,feature,key=None,hasMask=False):
 
     def reducerMapping(img):
+        if hasMask:
+            img = img.updateMask(img.select('cloudShadowMask'))
+
         reduction = img.reduceRegion(
             ee.Reducer.mean(), feature.geometry(), 10)
 
+        outVal = ee.Number(reduction.get(key))
+
         time = img.get('system:time_start')
 
-        return img.set('indexVal',[ee.Number(time),reduction.get(key)])
+        return img.set('indexVal',[ee.Number(time),outVal])
 
     collection = collection.filterBounds(feature.geometry()) #.getInfo()
 
@@ -167,9 +249,9 @@ def makeTimeSeries(collection,feature,key=None):
 
     indexSeries = indexCollection.aggregate_array('indexVal').getInfo()
 
-    formattedSeries = [[x[0],round(float(x[1]),3)] for x in indexSeries]
+    formattedSeries = [[x[0],round(float(x[1]),3)] for x in indexSeries if x[1] > 0]
 
-    days_with_data = [[datetime.datetime.fromtimestamp((int(x[0]) / 1000)).strftime('%Y %B %d'),round(float(x[1]),3)] for x in indexSeries if x[1] > 0 ]
+    # days_with_data = [[datetime.datetime.fromtimestamp((int(x[0]) / 1000)).strftime('%Y %B %d'),round(float(x[1]),3)] for x in indexSeries if x[1] > 0 ]
 
     return sorted(formattedSeries)
 
@@ -177,13 +259,15 @@ def getClickedImage(xValue,yValue,feature):
 
     equalDate = ee.Date(int(xValue))
 
-    water_image = ee.Image(waterCollection.select('mndwi').filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(1,'day')).first())
+    true_image = ee.Image(mergedCollection.filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(7    ,'day')).first())
+    true_imageid = true_image.getMapId({'min':0.05,'max':0.50,'gamma':1.5,'bands':'swir2,nir,green'})
 
-    water_imageid = water_image.getMapId({'min':-0.3,'max':0.3,'palette':'d3d3d3,84adff,9698d1,0000cc'})
+    water_image = ee.Image(waterCollection.select('mndwi').filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(2,'day')).first())
+    water_imageid = water_image.getMapId({'min':-0.2,'max':-0.05,'palette':'d3d3d3,84adff,9698d1,0000cc'})
 
     properties =  water_image.getInfo()['properties']
 
-    return water_imageid,properties
+    return true_imageid,water_imageid,properties
 
 def accumGFS(collection,startDate,nDays):
   if (nDays>16):
@@ -292,9 +376,10 @@ class fClass(object):
               .multiply(ee.Image(86400).divide(ee.Image(1e3))).addBands(initIap.multiply(1000))\
               .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
               .rename(['precip','Iap','vol','area','height']).clip(studyArea)\
-              .set('system:time_start',modelDate.advance(-6,'hour').millis()).float()
+              .set('system:time_start',modelDate.advance(-12,'hour').millis()).float()
 
-        modelOut = ee.ImageCollection.fromImages(dailyPrecip.iterate(self._accumVolume,ee.List([first])))
+        modelOut = ee.List(dailyPrecip.iterate(self._accumVolume,ee.List([first]))).slice(1)
+        modelOut = ee.ImageCollection.fromImages(modelOut)
 
         pondPct = modelOut.select('area').map(self._pctArea)
 
@@ -352,14 +437,15 @@ today = time.strftime("%Y-%m-%d")
 iniTime = ee.Date('2015-01-01')
 endTime = ee.Date(today)
 
-dilatePixels = 2
-zScoreThresh = -0.75
-shadowSumThresh = 0.35
-cloudThresh = 5
+dilatePixels = 2;
+cloudHeights = ee.List.sequence(200,5000,500);
+zScoreThresh = -0.8;
+shadowSumThresh = 0.35;
+cloudThresh = 10
 
 mergedCollection = mergeCollections(lc8, st2, studyArea, iniTime, endTime).sort('system:time_start', False)
 
-mergedCollection = simpleTDOM2(mergedCollection, zScoreThresh, shadowSumThresh, dilatePixels)
+mergedCollection = simpleTDOM2(mergedCollection, zScoreThresh, shadowSumThresh, dilatePixels)#.map(cloudProject)
 
 mndwiCollection = mergedCollection.map(calcWaterIndex)
 
@@ -367,7 +453,7 @@ waterCollection = mndwiCollection.map(waterClassifier)
 
 ponds_cls = ponds.map(pondClassifier)
 
-visParams = {'min': 0, 'max': 2, 'palette': 'red,yellow,green'}
+visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
 
 pondsImg = ponds_cls.reduceToImage(properties=['pondCls'],
                                    reducer=ee.Reducer.first())
@@ -400,7 +486,7 @@ def checkFeature(lon,lat):
 
     selPond = filterPond(lon,lat)
 
-    ts_values = makeTimeSeries(waterCollection.select('water'),selPond,key='water')
+    ts_values = makeTimeSeries(waterCollection,selPond,key='water',hasMask=True)
     name = selPond.getInfo()['features'][0]['properties']['Nom']
     if len(name) < 2:
         name = ' Unnamed Pond'
@@ -427,7 +513,6 @@ def forecastFeature(lon,lat):
         name = ' Unnamed Pond'
 
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
-
 
     return ts_values,coordinates,name
 

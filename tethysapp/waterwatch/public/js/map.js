@@ -21,6 +21,7 @@ var LIBRARY_OBJECT = (function() {
         current_layer,
         layers,
         map,
+	ponds_mapurl,
         ponds_mapid,
         ponds_token,
         public_interface,				// Object returned by the module
@@ -28,7 +29,9 @@ var LIBRARY_OBJECT = (function() {
         select_feature_layer,
         $chartModal,
         water_source,
-        water_layer;
+        water_layer,
+        true_source,
+        true_layer;
 
 
 
@@ -49,8 +52,9 @@ var LIBRARY_OBJECT = (function() {
 
     init_vars = function(){
         var $layers_element = $('#layers');
-        ponds_mapid = $layers_element.attr('data-ponds-mapid');
-        ponds_token = $layers_element.attr('data-ponds-token');
+	ponds_mapurl = $layers_element.attr('data-ponds-mapurl');
+        //ponds_mapid = $layers_element.attr('data-ponds-mapid');
+        //ponds_token = $layers_element.attr('data-ponds-token');
         $chartModal = $("#chart-modal");
     };
 
@@ -101,7 +105,7 @@ var LIBRARY_OBJECT = (function() {
 
         var ponds_layer = new ol.layer.Tile({
             source: new ol.source.XYZ({
-                url: "https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
+                url: ponds_mapurl //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
             })
         });
 
@@ -122,7 +126,13 @@ var LIBRARY_OBJECT = (function() {
             // url:""
         });
 
-        layers = [base_map,base_map2,ponds_layer,water_layer,boundary_layer,select_feature_layer];
+        true_source = new ol.source.XYZ();
+        true_layer = new ol.layer.Tile({
+            source: true_source
+            // url:""
+        });
+
+        layers = [base_map,base_map2,ponds_layer,true_layer,water_layer,boundary_layer,select_feature_layer];
         map = new ol.Map({
             target: 'map',
             layers: layers,
@@ -158,7 +168,7 @@ var LIBRARY_OBJECT = (function() {
         //Map on zoom function. To keep track of the zoom level. Data can only be viewed can only be added at a certain zoom level.
         map.on("moveend", function() {
             var zoom = map.getView().getZoom();
-            var zoomInfo = '<p style="color:white;">Current Zoom level = ' + parseFloat(zoom,3)+'.</p>';
+            var zoomInfo = '<p style="color:white;">Current Zoom level = ' + zoom.toFixed(3)+'.</p>';
             document.getElementById('zoomlevel').innerHTML = zoomInfo;
             if (zoom > 14){
                 base_map2.setVisible(true);
@@ -201,6 +211,7 @@ var LIBRARY_OBJECT = (function() {
                 if("success" in data) {
                     $('.info').html('');
                     map.getLayers().item(3).getSource().setUrl("");
+                    map.getLayers().item(4).getSource().setUrl("");
                     var polygon = new ol.geom.Polygon(data.coordinates);
                     polygon.applyTransform(ol.proj.getTransform('EPSG:4326', 'EPSG:3857'));
                     var feature = new ol.Feature(polygon);
@@ -287,7 +298,8 @@ var LIBRARY_OBJECT = (function() {
                                 var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                                 xhr.done(function(data) {
                                     if("success" in data) {
-                                        map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
+                                        map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
+                                        map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
                                         $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                         $("#reset").removeClass('hidden');
                                         $("#layers_checkbox").removeClass('hidden');
@@ -361,7 +373,8 @@ var LIBRARY_OBJECT = (function() {
                               var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                               xhr.done(function(data) {
                                   if("success" in data) {
-                                      map.getLayers().item(3).getSource().setUrl("https://earthengine.googleapis.com/map/"+data.water_mapid+"/{z}/{x}/{y}?token="+data.water_token);
+                                      map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
+                                      map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
                                       $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                       $("#reset").removeClass('hidden');
                                       $("#layers_checkbox").removeClass('hidden');
@@ -446,12 +459,21 @@ var LIBRARY_OBJECT = (function() {
         $(".alert").click(function(){
             $(".alert").alert("close");
         });
-        $('#mndwi_toggle').change(function() {
+        $('#true_toggle').change(function() {
             // this will contain a reference to the checkbox
             if (this.checked) {
                 map.getLayers().item(3).setVisible(true);
             } else {
                 map.getLayers().item(3).setVisible(false);
+            }
+        });
+
+        $('#mndwi_toggle').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(4).setVisible(true);
+            } else {
+                map.getLayers().item(4).setVisible(false);
             }
         });
 
