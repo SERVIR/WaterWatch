@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 import json
-from utilities import *
+from .utilities import *
 
 def api_get_ponds(request):
 

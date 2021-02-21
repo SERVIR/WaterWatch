@@ -8,12 +8,10 @@ import datetime,time
 from . import config
 
 try:
-    ee.Initialize()
-except EEException as e:
-    service_account=config.EE_SERVICE_ACCOUNT
-    secret_key=config.EE_SECRET_KEY
-    credentials = ee.ServiceAccountCredentials(service_account, secret_key) 
+    credentials=ee.ServiceAccountCredentials('gtondapu@airquality-255511.iam.gserviceaccount.com', '/home/tethys/waterwatch.json')
     ee.Initialize(credentials)
+except:
+    print("cannot initialize earth engine")
 
 def addArea(feature):
     return feature.set('area',feature.area());
@@ -426,7 +424,6 @@ class fClass(object):
         return pct.where(pct.gt(1),1)#.rename('pctArea')#
 
 
-
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
 lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
@@ -442,7 +439,6 @@ cloudHeights = ee.List.sequence(200,5000,500);
 zScoreThresh = -0.8;
 shadowSumThresh = 0.35;
 cloudThresh = 10
-
 mergedCollection = mergeCollections(lc8, st2, studyArea, iniTime, endTime).sort('system:time_start', False)
 
 mergedCollection = simpleTDOM2(mergedCollection, zScoreThresh, shadowSumThresh, dilatePixels)#.map(cloudProject)
@@ -452,14 +448,15 @@ mndwiCollection = mergedCollection.map(calcWaterIndex)
 waterCollection = mndwiCollection.map(waterClassifier)
 
 ponds_cls = ponds.map(pondClassifier)
-
+Pimage = ee.Image().paint(ponds_cls,0,2)
 visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
+
+iobj = Pimage.getMapId(visParams)
 
 pondsImg = ponds_cls.reduceToImage(properties=['pondCls'],
                                    reducer=ee.Reducer.first())
-
-pondsImgID = pondsImg.getMapId(visParams)
-
+pondsImgID = iobj
+# print(pondsImgID['tile_fetcher'].url_format)
 img = mergedCollection.median().clip(studyArea)
 
 mndwiImg = mndwiCollection.median().clip(studyArea)
@@ -470,7 +467,6 @@ elv = ee.Image('USGS/SRTMGL1_003')
 
 def initLayers():
     return pondsImgID
-
 
 def filterPond(lon, lat):
     point = ee.Geometry.Point(float(lon), float(lat))
@@ -483,8 +479,10 @@ def filterPond(lon, lat):
     return selPond
 
 def checkFeature(lon,lat):
+    print('check feature' )
 
     selPond = filterPond(lon,lat)
+    print('sel pond')
 
     ts_values = makeTimeSeries(waterCollection,selPond,key='water',hasMask=True)
     name = selPond.getInfo()['features'][0]['properties']['Nom']

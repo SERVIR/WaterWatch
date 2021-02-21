@@ -1,14 +1,17 @@
-from utilities import *
+from .utilities import forecastFeature
 import json
 from django.http import JsonResponse
 import datetime
 
+print('from ajax controllers')
 def timeseries(request):
 
     return_obj = {}
+    print('timeseries')
 
 
     if request.is_ajax() and request.method == 'POST':
+        print('request')
 
         info = request.POST
         lat = info.get('lat')
