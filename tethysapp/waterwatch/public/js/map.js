@@ -144,7 +144,7 @@ var LIBRARY_OBJECT = (function() {
 
         map.getLayers().item(1).setVisible(false);
 
-    init_events = init_events = function() {
+    init_events = function() {
         (function () {
             var target, observer, config;
             // select the target node
@@ -298,6 +298,7 @@ var LIBRARY_OBJECT = (function() {
                                 var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                                 xhr.done(function(data) {
                                     if("success" in data) {
+                                        console.log('data succerss')
                                         map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
                                         map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
                                         $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
@@ -370,11 +371,18 @@ var LIBRARY_OBJECT = (function() {
                               $("#layers_checkbox").addClass('hidden');
                               var lat = $("#current-lat").val();
                               var lon = $("#current-lon").val();
+                              console.log(lat);
+                              console.log(lon);
+                              console.log(this.x);
+                              console.log(this.y);
                               var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
+
                               xhr.done(function(data) {
                                   if("success" in data) {
+                                      console.log("success")
                                       map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
                                       map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
+                                      console.log(data.true_mapurl);
                                       $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                       $("#reset").removeClass('hidden');
                                       $("#layers_checkbox").removeClass('hidden');
@@ -469,8 +477,10 @@ var LIBRARY_OBJECT = (function() {
         });
 
         $('#mndwi_toggle').change(function() {
+            console.log('from get mndi')
             // this will contain a reference to the checkbox
             if (this.checked) {
+                console.log(map.getLayers().item(4));
                 map.getLayers().item(4).setVisible(true);
             } else {
                 map.getLayers().item(4).setVisible(false);

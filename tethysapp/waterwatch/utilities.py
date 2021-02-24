@@ -240,31 +240,37 @@ def makeTimeSeries(collection,feature,key=None,hasMask=False):
         time = img.get('system:time_start')
 
         return img.set('indexVal',[ee.Number(time),outVal])
-
     collection = collection.filterBounds(feature.geometry()) #.getInfo()
-
     indexCollection = collection.map(reducerMapping)
-
     indexSeries = indexCollection.aggregate_array('indexVal').getInfo()
-
-    formattedSeries = [[x[0],round(float(x[1]),3)] for x in indexSeries if x[1] > 0]
+    formattedSeries = [[x[0],round(float(x[1]),3)] for x in indexSeries if x[1] is not None and x[1] > 0]
 
     # days_with_data = [[datetime.datetime.fromtimestamp((int(x[0]) / 1000)).strftime('%Y %B %d'),round(float(x[1]),3)] for x in indexSeries if x[1] > 0 ]
 
     return sorted(formattedSeries)
 
 def getClickedImage(xValue,yValue,feature):
+    print('from get img')
 
     equalDate = ee.Date(int(xValue))
 
     true_image = ee.Image(mergedCollection.filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(7    ,'day')).first())
+    # t_image = ee.Image().paint(true_image, 0, 2)
+    # true_imageid = t_image.getMapId({'min':0.05,'max':0.50,'gamma':1.5,'bands':'swir2,nir,green'})
+    print('ater true')
+
+
     true_imageid = true_image.getMapId({'min':0.05,'max':0.50,'gamma':1.5,'bands':'swir2,nir,green'})
 
     water_image = ee.Image(waterCollection.select('mndwi').filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(2,'day')).first())
+    # w_image = ee.Image().paint(water_image, 0, 2)
+    # water_imageid = w_image.getMapId({'min':-0.2,'max':-0.05,'palette':'d3d3d3,84adff,9698d1,0000cc'})
+    print('after water')
     water_imageid = water_image.getMapId({'min':-0.2,'max':-0.05,'palette':'d3d3d3,84adff,9698d1,0000cc'})
 
     properties =  water_image.getInfo()['properties']
-
+    print(properties)
+    print('---------------------')
     return true_imageid,water_imageid,properties
 
 def accumGFS(collection,startDate,nDays):
@@ -340,18 +346,19 @@ class fClass(object):
         # calculate volume - area/height relationship parameters
         self.Ac = self.n.multiply(self.pArea)
         self.h0 = ee.Image(1)
-
         pondMin = ee.Number(elv.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.min(),
           scale=30
         ).get('elevation'))
+        print('after pond min')
         SoInit = ee.Image(0).where(elv.gte(pondMin).And(elv.lte(pondMin.add(3))),1)
         self.So = ee.Image(ee.Number(SoInit.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.sum(),
           scale=30
         ).get('constant'))).multiply(900)
+        print('after init')
 
         # begin forecasting water area
         forecastDays = 15
@@ -368,6 +375,7 @@ class fClass(object):
         dailyPrecip = accumGFS(precipData,modelDate,forecastDays)
 
         initIap = calcInitIap(cfs,modelDate,7)
+        print('after tap')
 
         # set model start with t-1 forcing
         first = ee.Image(cfs.filterDate(modelDate.advance(-1,'day'),modelDate).select(['precip']).sum())\
@@ -375,11 +383,14 @@ class fClass(object):
               .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
               .rename(['precip','Iap','vol','area','height']).clip(studyArea)\
               .set('system:time_start',modelDate.advance(-12,'hour').millis()).float()
+        print('firest image')
 
         modelOut = ee.List(dailyPrecip.iterate(self._accumVolume,ee.List([first]))).slice(1)
         modelOut = ee.ImageCollection.fromImages(modelOut)
+        print('model out')
 
         pondPct = modelOut.select('area').map(self._pctArea)
+        print('pond pct')
 
         ts = makeTimeSeries(pondPct.select('area'),self.pond,key='area')
         return ts
@@ -479,16 +490,12 @@ def filterPond(lon, lat):
     return selPond
 
 def checkFeature(lon,lat):
-    print('check feature' )
-
     selPond = filterPond(lon,lat)
-    print('sel pond')
 
     ts_values = makeTimeSeries(waterCollection,selPond,key='water',hasMask=True)
     name = selPond.getInfo()['features'][0]['properties']['Nom']
     if len(name) < 2:
         name = ' Unnamed Pond'
-
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
     return ts_values,coordinates,name
 
@@ -496,22 +503,28 @@ def checkFeature(lon,lat):
 def forecastFeature(lon,lat):
 
     selPond = filterPond(lon,lat)
+    print('before feature image')
 
     featureImg = ee.Image(waterCollection.filterBounds(selPond).sort('system:time_start',False).first())
+
+    print('after feature img')
 
     lastTime = ee.Date(featureImg.get('system:time_start'))
 
     pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water'))
+    print('after pond fraction')
+
 
     fModel = fClass(selPond,pondFraction,lastTime)
 
     ts_values = fModel.forecast()
+    print('after ts values')
     name = selPond.getInfo()['features'][0]['properties']['Nom']
     if len(name) < 2:
         name = ' Unnamed Pond'
 
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
-
+    print('after coordinates')
     return ts_values,coordinates,name
 
 def getMNDWI(lon,lat,xValue,yValue):
