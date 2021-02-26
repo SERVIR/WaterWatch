@@ -199,20 +199,18 @@ def waterClassifier(img):
 def pondClassifier(shape):
     waterList = waterCollection.filterBounds(shape.geometry())\
                 .sort('system:time_start',False)
+
     latest = ee.Image(waterList.first())
-    # dates = ee.Array(waterCollection.aggregate_array('system:time_start'))
-
-    # true = ee.Image(ee.Algorithms.If(latest.geometry().contains(shape.geometry),latest,
-    #         waterList.get(1)))
-
     avg = latest.reduceRegion(
         reducer=ee.Reducer.mean(),
         scale=10,
+        maxPixels=1e6,
         geometry=shape.geometry(),
         bestEffort=True
     )
 
     try:
+        print('in try')
         val = ee.Number(avg.get('water'))
         mVal = ee.Number(avg.get('cloudShadowMask'))
 
@@ -221,10 +219,15 @@ def pondClassifier(shape):
 
         cls = cls.add(val.gt(0.75))
     except:
+        print('jrhhjhgjhjgfhj')
         val = random.choice(range(2))
         cls = ee.Number(val)
 
     return ee.Feature(shape).set({'pondCls': cls.int8()})
+def test(x):
+    print('in test')
+    if x[1] is not None and x[1] > 0:
+        return [x[0],round(float(x[1]),3)]
 
 def makeTimeSeries(collection,feature,key=None,hasMask=False):
 
@@ -232,22 +235,18 @@ def makeTimeSeries(collection,feature,key=None,hasMask=False):
         if hasMask:
             img = img.updateMask(img.select('cloudShadowMask'))
 
-        reduction = img.reduceRegion(
-            ee.Reducer.mean(), feature.geometry(), 10)
-
-        outVal = ee.Number(reduction.get(key))
-
-        time = img.get('system:time_start')
-
-        return img.set('indexVal',[ee.Number(time),outVal])
-    collection = collection.filterBounds(feature.geometry()) #.getInfo()
-    indexCollection = collection.map(reducerMapping)
-    indexSeries = indexCollection.aggregate_array('indexVal').getInfo()
-    formattedSeries = [[x[0],round(float(x[1]),3)] for x in indexSeries if x[1] is not None and x[1] > 0]
-
-    # days_with_data = [[datetime.datetime.fromtimestamp((int(x[0]) / 1000)).strftime('%Y %B %d'),round(float(x[1]),3)] for x in indexSeries if x[1] > 0 ]
-
-    return sorted(formattedSeries)
+        reduction = img.select('water').reduceRegion(ee.Reducer.mean(), feature.geometry(), 10)
+        date = img.get('system:time_start')
+        indexImage = ee.Image().set('indexValue', [ee.Number(date), reduction])
+        return indexImage
+    filteredCollection = collection.filterBounds(feature.geometry())
+    print("filtered")
+    indexCollection = filteredCollection.map(reducerMapping)
+    print("mapped")
+    indexCollection2 = indexCollection.aggregate_array('indexValue')
+    print("aggregated")
+    values = indexCollection2.getInfo()
+    return values
 
 def getClickedImage(xValue,yValue,feature):
     print('from get img')
@@ -349,14 +348,14 @@ class fClass(object):
         pondMin = ee.Number(elv.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.min(),
-          scale=30
+          scale=30,maxPixels=1e6
         ).get('elevation'))
         print('after pond min')
         SoInit = ee.Image(0).where(elv.gte(pondMin).And(elv.lte(pondMin.add(3))),1)
         self.So = ee.Image(ee.Number(SoInit.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.sum(),
-          scale=30
+          scale=30,maxPixels=1e6
         ).get('constant'))).multiply(900)
         print('after init')
 
@@ -440,6 +439,7 @@ lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
 ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds')\
                 .map(addArea).filter(ee.Filter.gt("area",10000))
+print('after ponds')
 today = time.strftime("%Y-%m-%d")
 
 iniTime = ee.Date('2015-01-01')
@@ -450,87 +450,95 @@ cloudHeights = ee.List.sequence(200,5000,500);
 zScoreThresh = -0.8;
 shadowSumThresh = 0.35;
 cloudThresh = 10
-mergedCollection = mergeCollections(lc8, st2, studyArea, iniTime, endTime).sort('system:time_start', False)
-
-mergedCollection = simpleTDOM2(mergedCollection, zScoreThresh, shadowSumThresh, dilatePixels)#.map(cloudProject)
-
+print('before merging')
+mergedCollection= ee.ImageCollection("projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds")
+print('merged coll')
 mndwiCollection = mergedCollection.map(calcWaterIndex)
-
+print('mddwi coll')
 waterCollection = mndwiCollection.map(waterClassifier)
+ponds_cls = ee.FeatureCollection(ponds.map(pondClassifier))
 
-ponds_cls = ponds.map(pondClassifier)
+print('before classify')
 Pimage = ee.Image().paint(ponds_cls,0,2)
+print('before pIN')
 visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
 
-iobj = Pimage.getMapId(visParams)
+pondsImgID = Pimage.getMapId(visParams)
 
-pondsImg = ponds_cls.reduceToImage(properties=['pondCls'],
-                                   reducer=ee.Reducer.first())
-pondsImgID = iobj
-# print(pondsImgID['tile_fetcher'].url_format)
-img = mergedCollection.median().clip(studyArea)
+print('begp img id')
+def cliip(image):
+  # Crop by table extension
+  return image.clip(studyArea)
 
-mndwiImg = mndwiCollection.median().clip(studyArea)
+img = mergedCollection.map(cliip)
+# img = mergedCollection.median().clip(studyArea)
+mndwiImg = mndwiCollection.map(cliip)
 
 gfs = ee.ImageCollection('NOAA/GFS0P25')
 cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'],['precip'])
 elv = ee.Image('USGS/SRTMGL1_003')
 
 def initLayers():
+    print('jhhjh jh jhj')
     return pondsImgID
 
 def filterPond(lon, lat):
     point = ee.Geometry.Point(float(lon), float(lat))
+    print('after point')
     sampledPoint = ee.Feature(ponds.filterBounds(point).first())
+    print('after sample')
 
     computedValue = sampledPoint.getInfo()['properties']['uniqID']
+    print('get props')
 
     selPond = ponds.filter(ee.Filter.eq('uniqID', computedValue))
+    print('filter sel pond')
 
     return selPond
 
-def checkFeature(lon,lat):
-    selPond = filterPond(lon,lat)
-
-    ts_values = makeTimeSeries(waterCollection,selPond,key='water',hasMask=True)
-    name = selPond.getInfo()['features'][0]['properties']['Nom']
-    if len(name) < 2:
-        name = ' Unnamed Pond'
-    coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
-    return ts_values,coordinates,name
-
-
-def forecastFeature(lon,lat):
-
-    selPond = filterPond(lon,lat)
-    print('before feature image')
-
-    featureImg = ee.Image(waterCollection.filterBounds(selPond).sort('system:time_start',False).first())
-
-    print('after feature img')
-
-    lastTime = ee.Date(featureImg.get('system:time_start'))
-
-    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water'))
-    print('after pond fraction')
-
-
-    fModel = fClass(selPond,pondFraction,lastTime)
-
-    ts_values = fModel.forecast()
-    print('after ts values')
-    name = selPond.getInfo()['features'][0]['properties']['Nom']
-    if len(name) < 2:
-        name = ' Unnamed Pond'
-
-    coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
-    print('after coordinates')
-    return ts_values,coordinates,name
-
-def getMNDWI(lon,lat,xValue,yValue):
-
-    selPond = filterPond(lon, lat)
-
-    mndwi_img = getClickedImage(xValue,yValue,selPond)
-
-    return mndwi_img
+# def checkFeature(lon,lat):
+#     selPond = filterPond(lon,lat)
+#
+#     ts_values = makeTimeSeries(waterCollection,selPond,key='water',hasMask=True)
+#     name = selPond.getInfo()['features'][0]['properties']['Nom']
+#     if len(name) < 2:
+#         name = ' Unnamed Pond'
+#     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
+#     return ts_values,coordinates,name
+#
+#
+# def forecastFeature(lon,lat):
+#     print('before filter pond')
+#
+#     selPond = filterPond(lon,lat)
+#     print('before feature image')
+#
+#     featureImg = ee.Image(waterCollection.filterBounds(selPond).sort('system:time_start',False).first())
+#
+#     print('after feature img')
+#
+#     lastTime = ee.Date(featureImg.get('system:time_start'))
+#
+#     pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water'))
+#     print('after pond fraction')
+#
+#
+#     fModel = fClass(selPond,pondFraction,lastTime)
+#
+#     ts_values = fModel.forecast()
+#     print('after ts values')
+#     name = selPond.getInfo()['features'][0]['properties']['Nom']
+#     if len(name) < 2:
+#         name = ' Unnamed Pond'
+#
+#     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
+#     print('after coordinates')
+#     return ts_values,coordinates,name
+#
+# def getMNDWI(lon,lat,xValue,yValue):
+#
+#     selPond = filterPond(lon, lat)
+#
+#     mndwi_img = getClickedImage(xValue,yValue,selPond)
+#
+#     return mndwi_img

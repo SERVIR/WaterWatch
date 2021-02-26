@@ -7,6 +7,7 @@ def home(request):
     """
     Controller for the app home page.
     """
+
     ponds = initLayers()
     context = {
         'ponds_mapurl': ponds['tile_fetcher'].url_format,

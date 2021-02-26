@@ -274,6 +274,13 @@ var LIBRARY_OBJECT = (function() {
       };
 
     generate_chart = function(data,lat,lon,name){
+          console.log(data[0][1]);
+        console.log(data[0][1].water);
+  for (var i = 0; i < data.length; i++) {
+
+      data[i][1] = data[i][1].water;
+      return;
+    }
         Highcharts.stockChart('plotter',{
             chart: {
                 type:'line',
@@ -350,6 +357,15 @@ var LIBRARY_OBJECT = (function() {
         });
     };
     generate_forecast = function(data,lat,lon,name){
+        console.log(data[0][1]);
+        console.log(data[0][1].water);
+          var data1 = []
+          for (var i = 0; i < data.length; i++) {
+              if (data[i][1].water != null) {
+                  data[i][1] = data[i][1].water;
+                  data1.push([data[i], data[i][1].water]);
+              }
+          }
         Highcharts.stockChart('forecast-plotter',{
           chart: {
               type:'line',
@@ -426,7 +442,7 @@ var LIBRARY_OBJECT = (function() {
               enabled: true
           },
           series: [{
-              data:data,
+              data:data1,
               name: 'Forecast percent coverage of water'
           }]
       });
