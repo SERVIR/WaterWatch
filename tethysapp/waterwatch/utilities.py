@@ -8,9 +8,11 @@ import datetime,time
 from . import config
 
 try:
+    ee.Initialize()
+except:
     credentials=ee.ServiceAccountCredentials('gtondapu@airquality-255511.iam.gserviceaccount.com', '/home/tethys/waterwatch.json')
     ee.Initialize(credentials)
-except:
+finally:
     print("cannot initialize earth engine")
 
 def addArea(feature):
