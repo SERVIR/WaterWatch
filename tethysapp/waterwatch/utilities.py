@@ -205,38 +205,46 @@ def pondClassifier(shape):
     waterList = waterCollection.filterBounds(shape.geometry())\
                 .sort('system:time_start',False)
 
+
     latest = ee.Image(waterList.first())
-    avg = latest.reduceRegion(
+    avg = latest.select("water").reduceRegion(
         reducer=ee.Reducer.mean(),
-        scale=10,
-        maxPixels=1e6,
+        scale=30,
+        maxPixels=1e5,
         geometry=shape.geometry(),
-        bestEffort=True
+        # bestEffort=True
     )
 
-    try:
-        print('in try')
-        val = ee.Number(avg.get('water'))
-        print('from water values')
-        print(str(val.getInfo()))
+    # try:
+    #     print('in try')
+    #     val = ee.Number(avg.get('water'))
+    #     print('from water values')
+    #     print(str(val.getInfo()))
 
-        mVal = ee.Number(avg.get('cloudShadowMask'))
-        print('mval')
-        print(mVal.getInfo())
+    #     mVal = ee.Number(avg.get('cloudShadowMask'))
+    #     print('mval')
+    #     print(mVal.getInfo())
 
-        test = ee.Number(ee.Algorithms.If(mVal.lt(0.5),ee.Number(3),ee.Number(0)))
-        print('eeNum')
-        print(test.getInfo())
-        cls = test.add(val.gt(0.25))
+    #     test = ee.Number(ee.Algorithms.If(mVal.lt(0.5),ee.Number(3),ee.Number(0)))
+    #     print('eeNum')
+    #     print(test.getInfo())
+    #     cls = test.add(val.gt(0.25))
 
-        cls = cls.add(val.gt(0.75))
-    except:
-        print('jrhhjhgjhjgfhj')
-        val = random.choice(range(2))
-        cls = ee.Number(val)
-    print('before cls get info')
-    print(cls.int8().getInfo())
-    return ee.Feature(shape).set({'pondCls': cls.int8()})
+    #     cls = cls.add(val.gt(0.75))
+    # except:
+    #     print('jrhhjhgjhjgfhj')
+    #     val = random.choice(range(2))
+    #     cls = ee.Number(val)
+    # print('before cls get info')
+    # print(cls.int8().getInfo())
+
+    val = ee.Number(avg.get('water'))
+    test = ee.Number(ee.Algorithms.If(val.gte(0),0,3));
+    cls = test.add(val.gt(0.25).uint8());
+    cls = cls.add(val.gt(0.75).uint8());
+
+    return ee.Feature(shape).set({'pondCls': cls})
+
 def test(x):
     print('in test')
     if x[1] is not None and x[1] > 0:
@@ -245,14 +253,15 @@ def test(x):
 def makeTimeSeries(collection,feature,key=None,hasMask=False):
 
     def reducerMapping(img):
-        if hasMask:
-            img = img.updateMask(img.select('cloudShadowMask'))
+        # if hasMask:
+        #     img = img.updateMask(img.select('cloudShadowMask'))
 
-        reduction = img.select('water').reduceRegion(ee.Reducer.mean(), feature.geometry(), 10)
+        reduction = img.select('water').reduceRegion(ee.Reducer.mean(), feature.geometry(), 30)
         date = img.get('system:time_start')
         indexImage = ee.Image().set('indexValue', [ee.Number(date), reduction])
         return indexImage
-    filteredCollection = collection.filterBounds(feature.geometry())
+
+    filteredCollection = collection.filterBounds(feature.geometry()).sort("system:time_start")
 
     print("filtered")
     indexCollection = filteredCollection.map(reducerMapping)
@@ -268,7 +277,7 @@ def getClickedImage(xValue,yValue,feature):
 
     equalDate = ee.Date(int(xValue))
 
-    true_image = ee.Image(mergedCollection.filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(7    ,'day')).first())
+    # true_image = ee.Image(mergedCollection.filterBounds(feature.geometry()).filterDate(equalDate,equalDate.advance(7    ,'day')).first())
     # t_image = ee.Image().paint(true_image, 0, 2)
     # true_imageid = t_image.getMapId({'min':0.05,'max':0.50,'gamma':1.5,'bands':'swir2,nir,green'})
     print('ater true')
@@ -480,19 +489,25 @@ def cliip(image):
 img = mergedCollection.map(cliip)
 # img = mergedCollection.median().clip(studyArea)
 mndwiImg = mndwiCollection.map(cliip)
-waterCollection = mndwiCollection.map(waterClassifier)
+waterCollection = ee.ImageCollection("projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds")
 print('githika')
 #ee.Image(waterCollection.select('water').mosaic())
-# palette = {'palette': 'yellow,green,gray'}
-#
-# water_img = ee.Image(waterCollection.select('water').mosaic()).getMapId(palette)
-# print('thaqrun')
-#
-# print(water_img['tile_fetcher'].url_format)
+palette = {'palette': 'yellow,green,gray'}
+
+water_img = ee.Image(waterCollection.select('water').mosaic()).getMapId(palette)
+print('thaqrun')
+
+print(water_img['tile_fetcher'].url_format)
 ponds_cls = ee.FeatureCollection(ponds.map(pondClassifier))
 
 print('before classify')
-Pimage = ee.Image().paint(ponds,0,2)
+# Pimage = ee.Image().paint(ponds,"pondCls").blend(
+#     ee.Image().paint(ponds,"pondCls",1.5)
+# )
+Pimage = ponds_cls.reduceToImage(
+    properties= ['pondCls'],
+    reducer= ee.Reducer.first()
+)
 print('before pIN')
 visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
 
