@@ -102,8 +102,22 @@ dilatePixels = 2;
 zScoreThresh = -0.8;
 shadowSumThresh = 0.35;
 
-def dataClipper(img):
-        return img.set('system:time_start', img.get('system:time_start')).clip(ponds)
+def dataPrepper(img):
+    mndwi = img.expression('0.1511 * B1 + 0.1973 * B2 + 0.3283 * B3 + 0.3407 * B4 + -0.7117 * B5 + -0.4559 * B7',{
+        'B1': img.select('blue'),
+        'B2': img.select('green'),
+        'B3': img.select('red'),
+        'B4': img.select('nir'),
+        'B5': img.select('swir1'),
+        'B7': img.select('swir2'),
+    }).rename('mndwi')
+    water =  mndwi.gte(ee.Number(-0.1304)).rename("water")
+
+    out = ee.Image.cat([
+        mndwi.multiply(10000).int16(),
+        water.uint8(),
+    ]).set('system:time_start', img.get('system:time_start'))
+    return out
 
 
 
@@ -125,7 +139,7 @@ collection = ee.ImageCollection(mergedCollection).filterBounds(geometry).filterD
 # do any other processing u can, like urs needs merging and stuff
 # also create a map function to clip to the features and map ur collection to it
 
-processedCollection =  collection.map(dataClipper)
+processedCollection =  collection.map(dataPrepper)
 
 # then ur final processed collection u will export
 
@@ -143,7 +157,7 @@ for i in range(wqImages):
             thisImg = ee.Image(wqicList.get(i))
             name = thisImg.get('system:index').getInfo()
             print(name)
-            task = ee.batch.Export.image.toAsset(image= thisImg.unmask(0), description='ewf_ponds',
+            task = ee.batch.Export.image.toAsset(image= thisImg, description='ewf_ponds',
                                                  assetId='projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds/' + name, scale=30,
                                                  maxPixels=1.0E13, region=thisImg.geometry())
             while not is_connected:
