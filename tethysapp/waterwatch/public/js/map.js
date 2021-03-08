@@ -276,11 +276,12 @@ var LIBRARY_OBJECT = (function() {
     generate_chart = function(data,lat,lon,name){
           console.log(data[0][1]);
         console.log(data[0][1].water);
+        var waterArr=[]
   for (var i = 0; i < data.length; i++) {
-
-      data[i][1] = data[i][1].water;
-      return;
+      if(data[i][1].water!=null)
+            waterArr.push([data[i][0],data[i][1].water])
     }
+  console.log(waterArr);
         Highcharts.stockChart('plotter',{
             chart: {
                 type:'line',
@@ -351,7 +352,7 @@ var LIBRARY_OBJECT = (function() {
                 enabled: true
             },
             series: [{
-                data:data,
+                data:waterArr,
                 name: 'Historical percent coverage of water'
             }]
         });

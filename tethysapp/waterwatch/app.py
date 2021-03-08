@@ -27,31 +27,31 @@ class Waterwatch(TethysAppBase):
                 url='waterwatch',
                 controller='waterwatch.controllers.home'
             ),
-            # UrlMap(
-            #     name='timeseries',
-            #     url='waterwatch/timeseries',
-            #     controller='waterwatch.ajax_controllers.timeseries'
-            # ),
-            # UrlMap(
-            #     name='forecast',
-            #     url='waterwatch/forecast',
-            #     controller='waterwatch.ajax_controllers.forecast'
-            # ),
-            # UrlMap(
-            #     name='mndwi',
-            #     url='waterwatch/mndwi',
-            #     controller='waterwatch.ajax_controllers.mndwi'
-            # ),
-            # UrlMap(
-            #     name='getPonds',
-            #     url='waterwatch/api/getPonds',
-            #     controller='waterwatch.api.api_get_ponds'
-            # ),
-            # UrlMap(
-            #     name='getTimeseries',
-            #     url='waterwatch/api/getTimeseries',
-            #     controller='waterwatch.api.api_get_timeseries'
-            # ),
+            UrlMap(
+                name='timeseries',
+                url='waterwatch/timeseries',
+                controller='waterwatch.ajax_controllers.timeseries'
+            ),
+            UrlMap(
+                name='forecast',
+                url='waterwatch/forecast',
+                controller='waterwatch.ajax_controllers.forecast'
+            ),
+            UrlMap(
+                name='mndwi',
+                url='waterwatch/mndwi',
+                controller='waterwatch.ajax_controllers.mndwi'
+            ),
+            UrlMap(
+                name='getPonds',
+                url='waterwatch/api/getPonds',
+                controller='waterwatch.api.api_get_ponds'
+            ),
+            UrlMap(
+                name='getTimeseries',
+                url='waterwatch/api/getTimeseries',
+                controller='waterwatch.api.api_get_timeseries'
+            ),
         )
 
         return url_maps
