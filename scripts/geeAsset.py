@@ -150,8 +150,9 @@ geometry = ee.Geometry.Polygon([[[-15.866,14.193],
                                  [-15.866,16.490],
                                  [-15.866,14.193]]])
 
-lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
-st2 = ee.ImageCollection('COPERNICUS/S2')
+lc8 = ee.ImageCollection('ee.ImageCollection("LANDSAT/LC08/C01/T2_SR")')
+st2 = ee.ImageCollection('ee.ImageCollection("COPERNICUS/S2_SR")')
+
 mergedCollection = mergeCollections(lc8, st2, geometry, iniDate, endDate).sort('system:time_start', False)
 
 mergedCollection = simpleTDOM2(mergedCollection, zScoreThresh, shadowSumThresh, dilatePixels)
