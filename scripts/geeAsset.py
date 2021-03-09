@@ -159,14 +159,18 @@ def gond_waterclassifier(ndvi,ndwi,swir):
     return indexWater.And(swirWater)
 
 def watermapping(img):
-    ndvi = img.normalizedDifference(["nir","red"]).rename("ndvi")
-    ndwi = img.normalizedDifference(["green","nir"]).rename("ndwi")
-
+    """Function to calculate water indices and detect water using thresholds
+    Result is a multi band image of water from multiple water detection methods
+    """
+    # calculate different indices to threshold
+    # modified normalized difference water index
     mndwi = img.normalizedDifference(["green","swir1"]).rename("mndwi")
 
+    # normalized difference moisture index
     ndmi = img.normalizedDifference(["nir","swir1"]).rename("ndmi")
 
-    aewinsh = img.expression(
+    # automated water extraction index (no shadow)
+    aweinsh = img.expression(
         "4.0 * (g-s) - ((0.25*n) + (2.75*w))",
         {
             "g": img.select("green"),
@@ -176,7 +180,8 @@ def watermapping(img):
         },
     ).rename("aewinsh")
 
-    aewish = img.expression(
+    # automated water extraction index (shadow) 
+    aweish = img.expression(
         "b+2.5*g-1.5*(n+s)-0.25*w",
         {
             "b": img.select("blue"),
@@ -187,6 +192,7 @@ def watermapping(img):
         },
     ).rename("aewish")
 
+    # water ratio index
     wri = img.expression(
         "(green+red)/(nir+swir)",
         {
@@ -197,6 +203,7 @@ def watermapping(img):
         },
     ).rename("wri")
 
+    # tassled cap wetness index
     twc = img.expression(
         '0.1511 * B1 + 0.1973 * B2 + 0.3283 * B3 + 0.3407 * B4 + -0.7117 * B5 + -0.4559 * B7',
         {
@@ -209,12 +216,13 @@ def watermapping(img):
         }
     ).rename('tcw')
 
+    # concatenate the indices together that will be thresholded
     indices = ee.Image.cat([
         img.select(["swir.*"]),
         mndwi,
         ndmi,
-        aewinsh,
-        aewish,
+        aweinsh,
+        aweish,
         wri,
         twc
     ])
@@ -231,8 +239,12 @@ def watermapping(img):
         # append iamges to list to concatenate later
         waters.append(water_id.rename(f"{k}_water"))
 
+    # decicion tree classification process, commented out because it takes a while to run
+    # ndvi = img.normalizedDifference(["nir","red"]).rename("ndvi")
+    # ndwi = img.normalizedDifference(["green","nir"]).rename("ndwi")
     # gond_water = gond_waterclassifier(ndvi,ndwi, img.select("swir1")).rename("gond_water")
     # waters.append(gond_water)
+
 
     # concatenate all of the water images together and cast to byte datatype
     # valid values should be 0 (no water) or 1 (water)
@@ -273,9 +285,9 @@ WATER_THRESHS = {
     "aewinsh": -1.3835,
 }
 
-iniDate = ee.Date('2020-01-06')
+# change dates to range to process
+iniDate = ee.Date('2020-01-01')
 today = ee.Date('2020-01-31')
-
 endDate = ee.Date(today)
 
 # You will want to use ur features instead
@@ -285,19 +297,20 @@ geometry = ee.Geometry.Polygon([[[-15.866,14.193],
                                  [-15.866,16.490],
                                  [-15.866,14.193]]])
 
-
+# preprocess and merge the landsat8 and sentinel2 data for a spatial/temporal domain
 mergedCollection = mergeCollections(LC8, S2, geometry, iniDate, endDate).sort('system:time_start', False)
 
+# apply the multi-threshod water mapping process
 processedCollection =  mergedCollection.map(watermapping)
 
-# then ur final processed collection u will export
-
+# get some info for exports
 wqImages = processedCollection.size().getInfo()
 wqicList = processedCollection.toList(wqImages)
 
-print(str(wqImages))
+print(f"Attemping to export {wqImages} images...")
 
-for i in range(5):#range(wqImages):
+# loop through the imagery to export
+for i in range(wqImages):
     if i < 0:
         print("Skipping: " + str(i))
     else:
