@@ -318,8 +318,8 @@ for i in range(wqImages):
             print("In export loop: " + str(i))
             thisImg = ee.Image(wqicList.get(i))
             name = thisImg.get('system:index').getInfo()
-            outScale = 30 if "LC8" in name else 10
-            print(name)
+            outScale = 30 if "LC08" in name else 10
+            print(f"Image name:{name}")
             task = ee.batch.Export.image.toAsset(image= thisImg, description='ewf_ponds',
                                                  assetId='projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds/' + name, scale=outScale,
                                                  maxPixels=1.0E13, region=thisImg.geometry())
