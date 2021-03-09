@@ -4,8 +4,86 @@ import time
 from ee.batch import Export
 
 ee.Initialize()
-cloudThresh = 10
-shadowSumThresh = 0.35
+
+
+def landsatQaMask(img):
+    """Custom QA masking method for Landsat surface reflectance dataset
+    """
+    # Bits 3 and 5 are cloud shadow and cloud, respectively.
+    cloudShadowBitMask = 1 << 3
+    cloudsBitMask = 1 << 5
+
+    # Get the pixel QA band.
+    qa = image.select('pixel_qa')
+
+    # Both flags should be set to zero, indicating clear conditions.
+    mask = (
+        qa.bitwiseAnd(cloudShadowBitMask).eq(0)
+        .And(qa.bitwiseAnd(cloudsBitMask).eq(0))
+    )
+
+    # Return the masked image, scaled to reflectance, without the QA bands.
+    return image.updateMask(mask).divide(10000)
+        .select("B[0-9]*")
+        .copyProperties(image, ["system:time_start"]);
+
+def sentinel2QaMask(img):
+    """Custom QA masking method for Sentinel2 L1C/S2A dataset
+    """
+    # set some constant variables for the S2 cloud masking
+    CLD_PRB_THRESH = 40
+    NIR_DRK_THRESH = 0.175 * 1e4
+    CLD_PRJ_DIST = 3
+    BUFFER = 100
+    CRS = img.select(0).projection()
+
+    # Get s2cloudless image, subset the probability band.
+    cld_prb = ee.Image(
+        s2_cld_prb_coll
+        .filter(ee.Filter.eq("system:index", img.get("system:index")))
+        .first()
+    ).select("probability")
+
+    # Condition s2cloudless by the probability threshold value.
+    is_cloud = cld_prb.gt(CLD_PRB_THRESH)
+
+    # Identify water pixels from the SCL band, invert.
+    not_water = img.select("SCL").neq(6)
+
+    # Identify dark NIR pixels that are not water (potential cloud shadow pixels).
+    dark_pixels = img.select("B8").lt(NIR_DRK_THRESH).multiply(not_water)
+
+    # Determine the direction to project cloud shadow from clouds (assumes UTM projection).
+    shadow_azimuth = ee.Number(90).subtract(
+        ee.Number(img.get("MEAN_SOLAR_AZIMUTH_ANGLE"))
+    )
+
+    # Project shadows from clouds for the distance specified by the CLD_PRJ_DIST input.
+    cld_proj = (
+        is_cloud.directionalDistanceTransform(shadow_azimuth, CLD_PRJ_DIST * 10)
+        .reproject(**{"crs": CRS, "scale": 120})
+        .select("distance")
+        .mask()
+    )
+
+    # Identify the intersection of dark pixels with cloud shadow projection.
+    is_shadow = cld_proj.multiply(dark_pixels)
+
+    # Combine cloud and shadow mask, set cloud and shadow as value 1, else 0.
+    is_cld_shdw = is_cloud.add(is_shadow).gt(0)
+
+    # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
+    # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
+    is_cld_shdw = (
+        is_cld_shdw.focal_min(2)
+        .focal_max(BUFFER * 2 / 20)
+        .reproject(**{"crs": CRS, "scale": 60})
+        .rename("cloudmask")
+    )
+
+    # Subset reflectance bands and update their masks, return the result.
+    return img.select("B.*").updateMask(is_cld_shdw.Not())
+
 
 def addArea(feature):
     return feature.set('area',feature.area());
@@ -13,74 +91,14 @@ ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/
                 #.map(addArea).filter(ee.Filter.gt("area",10000))
 def lsTOA(img):
     return ee.Algorithms.Landsat.TOA(img)
-def rescale(img, thresholds):
-    return img.subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
-
-
-def lsCloudMask(img):
-    blank = ee.Image(0)
-    scored = ee.Algorithms.Landsat.simpleCloudScore(img)
-    clouds = blank.where(scored.select(['cloud']).lte(cloudThresh), 1)\
-                .clip(img.geometry())
-    img = img.addBands(clouds.rename(['cloudMask']))
-    return img.updateMask(clouds).set("system:time_start", img.get("system:time_start"),
-                   "SUN_ZENITH",ee.Number(90).subtract(img.get('SUN_ELEVATION')),
-                   "scale",ee.Number(30))
-				   
-def simpleTDOM2(collection, zScoreThresh, shadowSumThresh, dilatePixels):
-    def darkMask(img):
-        zScore = img.select(shadowSumBands).subtract(irMean).divide(irStdDev)
-        irSum = img.select(shadowSumBands).reduce(ee.Reducer.sum())
-        TDOMMask = zScore.lt(zScoreThresh).reduce(ee.Reducer.sum()).eq(2).And(irSum.lt(shadowSumThresh)).Not()
-        TDOMMask = TDOMMask.focal_min(dilatePixels)
-        img = img.addBands(TDOMMask.rename(['TDOMMask']))
-        # Combine the cloud and shadow masks
-        combinedMask = img.select('cloudMask').mask().And(img.select('TDOMMask'))\
-            .rename('cloudShadowMask');
-        return img.addBands(combinedMask).updateMask(combinedMask)
-
-    shadowSumBands = ['nir','swir1','swir2']
-    irStdDev = collection.select(shadowSumBands).reduce(ee.Reducer.stdDev())
-    irMean = collection.select(shadowSumBands).mean()
-
-    collection = collection.map(darkMask)
-
-    return collection
-	
-def s2CloudMask(img):
-    score = ee.Image(1.0)
-    qa = img.select("QA60").unmask()
-
-    score = score.min(rescale(img.select(['B2']), [0.1, 0.5]))
-    score = score.min(rescale(img.select(['B1']), [0.1, 0.3]))
-    score = score.min(rescale(img.select(['B1']).add(img.select(['B10'])), [0.15, 0.2]))
-    score = score.min(rescale(img.select(['B4']).add(img.select(['B3'])).add(img.select('B2')), [0.2, 0.8]))
-
-    #Clouds are moist
-    ndmi = img.normalizedDifference(['B8A','B11'])
-    score=score.min(rescale(ndmi, [-0.1, 0.1]))
-
-    # However, clouds are not snow.
-    ndsi = img.normalizedDifference(['B3', 'B11'])
-    score=score.min(rescale(ndsi, [0.8, 0.6]))
-    score = score.multiply(100).byte().lte(cloudThresh)
-    mask = score.And(qa.lt(1024)).rename(['cloudMask'])\
-                .clip(img.geometry())
-    img = img.addBands(mask)
-    return img.divide(10000).set("system:time_start", img.get("system:time_start"),
-                                 'CLOUD_COVER',img.get('CLOUD_COVERAGE_ASSESSMENT'),
-                                 'SUN_AZIMUTH',img.get('MEAN_SOLAR_AZIMUTH_ANGLE'),
-                                 'SUN_ZENITH',img.get('MEAN_SOLAR_ZENITH_ANGLE'),
-                                 'scale',ee.Number(10))
-
 
 def mergeCollections(l8, s2, studyArea, t1, t2):
     lc8rename = l8.filterBounds(studyArea).filterDate(t1, t2).map(lsTOA).filter(
-        ee.Filter.lt('CLOUD_COVER', 75)).map(lsCloudMask).select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7','cloudMask'],
+        ee.Filter.lt('CLOUD_COVER', 75)).map(landsatQaMask).select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7','cloudMask'],
                                                                  ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask'])
 
     st2rename = s2.filterBounds(studyArea).filterDate(t1, t2).filter(
-        ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(s2CloudMask).select(
+        ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(sentinel2QaMask).select(
         ['B2', 'B3', 'B4', 'B8', 'B11', 'B12','cloudMask'],
         ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask'])
 		#.map(bandPassAdjustment)
@@ -98,9 +116,13 @@ iniDate = ee.Date('2020-01-06')
 today = ee.Date('2020-01-31')
 
 endDate = ee.Date(today)
-dilatePixels = 2;
-zScoreThresh = -0.8;
-shadowSumThresh = 0.35;
+
+
+
+s2_cld_prb_coll = (
+    ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
+    .filterDate(iniDate,endtoday)
+)
 
 def dataPrepper(img):
     mndwi = img.expression('0.1511 * B1 + 0.1973 * B2 + 0.3283 * B3 + 0.3407 * B4 + -0.7117 * B5 + -0.4559 * B7',{
