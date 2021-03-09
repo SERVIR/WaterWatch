@@ -85,25 +85,37 @@ def sentinel2QaMask(img):
     return img.select("B.*").updateMask(is_cld_shdw.Not())
 
 
-def addArea(feature):
-    return feature.set('area',feature.area());
-ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds') #\
-                #.map(addArea).filter(ee.Filter.gt("area",10000))
-def lsTOA(img):
-    return ee.Algorithms.Landsat.TOA(img)
-
 def mergeCollections(l8, s2, studyArea, t1, t2):
-    lc8rename = l8.filterBounds(studyArea).filterDate(t1, t2).map(lsTOA).filter(
-        ee.Filter.lt('CLOUD_COVER', 75)).map(landsatQaMask).select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7','cloudMask'],
-                                                                 ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask'])
+    # preprocess the landsat inputs
+    # spatio-temporal filter
+    # inital metadata cloud filter (don't want super cloudy images)
+    # apply the QA masking function on all imagery
+    # rename the bands we want to use
+    lc8preprocess = (
+        l8.filterBounds(studyArea)
+        .filterDate(t1, t2)
+        .filter(ee.Filter.lt('CLOUD_COVER', 75))
+        .map(landsatQaMask)
+        .select(
+            ['B2', 'B3', 'B4', 'B5', 'B6', 'B7','cloudMask'],
+            ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask']
+        )
+    )
 
-    st2rename = s2.filterBounds(studyArea).filterDate(t1, t2).filter(
-        ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75)).map(sentinel2QaMask).select(
-        ['B2', 'B3', 'B4', 'B8', 'B11', 'B12','cloudMask'],
-        ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask'])
+    # preprocess the sentinel2 inputs
+    # use same preprocessing workflow as landsat
+    st2preprocess= (
+        s2.filterBounds(studyArea)
+        .filterDate(t1, t2)
+        .filter(ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75))
+        .map(sentinel2QaMask)
+        .select(
+            ['B2', 'B3', 'B4', 'B8', 'B11', 'B12','cloudMask'],
+            ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask']
+        )
 		#.map(bandPassAdjustment)
 
-    return ee.ImageCollection(lc8rename.merge(st2rename))
+    return ee.ImageCollection(lc8preprocess.merge(st2preprocess))
 	
 def is_connected():
     try:
