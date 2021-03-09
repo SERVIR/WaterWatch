@@ -14,7 +14,7 @@ def landsatQaMask(img):
     cloudsBitMask = 1 << 5
 
     # Get the pixel QA band.
-    qa = image.select('pixel_qa')
+    qa = img.select('pixel_qa')
 
     # Both flags should be set to zero, indicating clear conditions.
     mask = (
@@ -23,9 +23,11 @@ def landsatQaMask(img):
     )
 
     # Return the masked image, scaled to reflectance, without the QA bands.
-    return image.updateMask(mask).divide(10000)
+    return (
+        img.updateMask(mask).divide(10000)
         .select("B[0-9]*")
-        .copyProperties(image, ["system:time_start"]);
+        .copyProperties(img, ["system:time_start"])
+    )
 
 def sentinel2QaMask(img):
     """Custom QA masking method for Sentinel2 L1C/S2A dataset
@@ -39,7 +41,7 @@ def sentinel2QaMask(img):
 
     # Get s2cloudless image, subset the probability band.
     cld_prb = ee.Image(
-        s2_cld_prb_coll
+        S2_CLOUD_PROBA_COLL 
         .filter(ee.Filter.eq("system:index", img.get("system:index")))
         .first()
     ).select("probability")
@@ -82,7 +84,19 @@ def sentinel2QaMask(img):
     )
 
     # Subset reflectance bands and update their masks, return the result.
-    return img.select("B.*").updateMask(is_cld_shdw.Not())
+    return (
+        img.updateMask(is_cld_shdw.Not())
+        .divide(10000).select("B.*")
+        .copyProperties(img, ["system:time_start"])
+    )
+
+def harmonize(s2img):
+    """Function to apply and pass adjustment to S2 data
+    for hamronized landsat-sentinel2 data
+    """
+    landsatLike = s2img.multiply(GAIN).add(BIAS)
+
+    return landsatLike.copyProperties(s2img,["system:time_start"])
 
 
 def mergeCollections(l8, s2, studyArea, t1, t2):
@@ -97,63 +111,172 @@ def mergeCollections(l8, s2, studyArea, t1, t2):
         .filter(ee.Filter.lt('CLOUD_COVER', 75))
         .map(landsatQaMask)
         .select(
-            ['B2', 'B3', 'B4', 'B5', 'B6', 'B7','cloudMask'],
-            ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask']
+            ['B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
+            ['blue', 'green', 'red', 'nir', 'swir1', 'swir2']
         )
     )
 
     # preprocess the sentinel2 inputs
     # use same preprocessing workflow as landsat
+    # except apply band pass adjustment at the end
     st2preprocess= (
         s2.filterBounds(studyArea)
         .filterDate(t1, t2)
         .filter(ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT', 75))
         .map(sentinel2QaMask)
         .select(
-            ['B2', 'B3', 'B4', 'B8', 'B11', 'B12','cloudMask'],
-            ['blue', 'green', 'red', 'nir', 'swir1', 'swir2','cloudMask']
+            ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'],
+            ['blue', 'green', 'red', 'nir', 'swir1', 'swir2']
         )
-		#.map(bandPassAdjustment)
+		.map(harmonize)
+    )
 
     return ee.ImageCollection(lc8preprocess.merge(st2preprocess))
 	
 def is_connected():
+    """Function to make sure we are still connected to EE servers for
+    long running processes
+    """
     try:
         urllib.request.urlopen('https://www.google.com/', timeout=1)
         return True
     except urllib.request.URLError:
         return False
 
+def gond_waterclassifier(ndvi,ndwi,swir):
+    """Implementation of surface water mapping algorithm from https://www.tandfonline.com/doi/abs/10.1080/0143116031000139908
+    English description here: https://www.mdpi.com/1424-8220/20/2/431/
+    """
+
+    ndDiff = ndvi.subtract(ndwi)
+    ndDiffAvg = ndDiff.focal_mean(45,"square")
+    diffDiff = ndDiffAvg.subtract(ndDiff)
+    indexWater = diffDiff.gte(0.08)
+    swirAvg = swir.focal_mean(45,"square")
+    swirDiff = swirAvg.subtract(swir)
+    swirWater = swirDiff.gte(0.05)
+
+    return indexWater.And(swirWater)
+
+def watermapping(img):
+    ndvi = img.normalizedDifference(["nir","red"]).rename("ndvi")
+    ndwi = img.normalizedDifference(["green","nir"]).rename("ndwi")
+
+    mndwi = img.normalizedDifference(["green","swir1"]).rename("mndwi")
+
+    ndmi = img.normalizedDifference(["nir","swir1"]).rename("ndmi")
+
+    aewinsh = img.expression(
+        "4.0 * (g-s) - ((0.25*n) + (2.75*w))",
+        {
+            "g": img.select("green"),
+            "s": img.select("swir1"),
+            "n": img.select("nir"),
+            "w": img.select("swir2"),
+        },
+    ).rename("aewinsh")
+
+    aewish = img.expression(
+        "b+2.5*g-1.5*(n+s)-0.25*w",
+        {
+            "b": img.select("blue"),
+            "g": img.select("green"),
+            "n": img.select("nir"),
+            "s": img.select("swir1"),
+            "w": img.select("swir2"),
+        },
+    ).rename("aewish")
+
+    wri = img.expression(
+        "(green+red)/(nir+swir)",
+        {
+            "green": img.select("green"),
+            "red": img.select("red"),
+            "nir": img.select("nir"),
+            "swir": img.select("swir1"),
+        },
+    ).rename("wri")
+
+    twc = img.expression(
+        '0.1511 * B1 + 0.1973 * B2 + 0.3283 * B3 + 0.3407 * B4 + -0.7117 * B5 + -0.4559 * B7',
+        {
+            'B1': img.select('blue'),
+            'B2': img.select('green'),
+            'B3': img.select('red'),
+            'B4': img.select('nir'),
+            'B5': img.select('swir1'),
+            'B7': img.select('swir2'),
+        }
+    ).rename('tcw')
+
+    indices = ee.Image.cat([
+        img.select(["swir.*"]),
+        mndwi,
+        ndmi,
+        aewinsh,
+        aewish,
+        wri,
+        twc
+    ])
+
+    # loop through the multiple indices classify water based on threshold values
+    waters = []
+    for k,v in WATER_THRESHS.items():
+        # check if we need to do < or > operator
+        if k in ["swir1","swir2"]:
+            water_id = indices.select(k).lt(ee.Number(v))
+        else:
+            water_id = indices.select(k).gt(ee.Number(v))
+
+        # append iamges to list to concatenate later
+        waters.append(water_id.rename(f"{k}_water"))
+
+    # gond_water = gond_waterclassifier(ndvi,ndwi, img.select("swir1")).rename("gond_water")
+    # waters.append(gond_water)
+
+    # concatenate all of the water images together and cast to byte datatype
+    # valid values should be 0 (no water) or 1 (water)
+    out =  (
+        ee.Image.cat(waters).uint8()
+        .copyProperties(img,["system:time_start"])
+    )
+
+    return out
+
+
+
+# sentinel2 band pass adjustment coefficients
+# coeffs taken from https://www.sciencedirect.com/science/article/pii/S0034425718304139
+GAIN = ee.Image.constant([0.9778, 1.0053, 0.9765, 0.9983, 0.9987, 1.003])
+BIAS = ee.Image.constant([-0.00411, -0.00093, 0.00094, -0.0001, -0.0015, -0.0012])
+
+# sentinel2 cloud probability collection
+# used in S2 QA process
+S2_CLOUD_PROBA_COLL = ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
+
+# define the Landat and Sentinel2 surface reflectance products
+LC8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR')
+S2 = ee.ImageCollection('COPERNICUS/S2_SR')
+
+# dictionary containing the threshold for different water indices
+# used for multi thresholding water bodies based on index
+# thresholds taken from https://www.mdpi.com/1424-8220/20/2/431/
+# only use indices/thresholds from table 5 with OA over 90%
+WATER_THRESHS = {
+    "swir1": 0.2522,
+    "swir2": 0.1652,
+    "ndmi": 0.0149,
+    "mndwi": -0.3350,
+    "wri": 0.6250,
+    "tcw": -0.1118,
+    "aewish": -0.4078,
+    "aewinsh": -1.3835,
+}
+
 iniDate = ee.Date('2020-01-06')
 today = ee.Date('2020-01-31')
 
 endDate = ee.Date(today)
-
-
-
-s2_cld_prb_coll = (
-    ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
-    .filterDate(iniDate,endtoday)
-)
-
-def dataPrepper(img):
-    mndwi = img.expression('0.1511 * B1 + 0.1973 * B2 + 0.3283 * B3 + 0.3407 * B4 + -0.7117 * B5 + -0.4559 * B7',{
-        'B1': img.select('blue'),
-        'B2': img.select('green'),
-        'B3': img.select('red'),
-        'B4': img.select('nir'),
-        'B5': img.select('swir1'),
-        'B7': img.select('swir2'),
-    }).rename('mndwi')
-    water =  mndwi.gte(ee.Number(-0.1304)).rename("water")
-
-    out = ee.Image.cat([
-        mndwi.multiply(10000).int16(),
-        water.uint8(),
-    ]).set('system:time_start', img.get('system:time_start'))
-    return out
-
-
 
 # You will want to use ur features instead
 geometry = ee.Geometry.Polygon([[[-15.866,14.193],
@@ -162,19 +285,10 @@ geometry = ee.Geometry.Polygon([[[-15.866,14.193],
                                  [-15.866,16.490],
                                  [-15.866,14.193]]])
 
-lc8 = ee.ImageCollection('ee.ImageCollection("LANDSAT/LC08/C01/T2_SR")')
-st2 = ee.ImageCollection('ee.ImageCollection("COPERNICUS/S2_SR")')
 
-mergedCollection = mergeCollections(lc8, st2, geometry, iniDate, endDate).sort('system:time_start', False)
+mergedCollection = mergeCollections(LC8, S2, geometry, iniDate, endDate).sort('system:time_start', False)
 
-mergedCollection = simpleTDOM2(mergedCollection, zScoreThresh, shadowSumThresh, dilatePixels)
-
-
-collection = ee.ImageCollection(mergedCollection).filterBounds(geometry).filterDate(iniDate, endDate)
-# do any other processing u can, like urs needs merging and stuff
-# also create a map function to clip to the features and map ur collection to it
-
-processedCollection =  collection.map(dataPrepper)
+processedCollection =  mergedCollection.map(watermapping)
 
 # then ur final processed collection u will export
 
@@ -183,7 +297,7 @@ wqicList = processedCollection.toList(wqImages)
 
 print(str(wqImages))
 
-for i in range(wqImages):
+for i in range(5):#range(wqImages):
     if i < 0:
         print("Skipping: " + str(i))
     else:
@@ -191,9 +305,10 @@ for i in range(wqImages):
             print("In export loop: " + str(i))
             thisImg = ee.Image(wqicList.get(i))
             name = thisImg.get('system:index').getInfo()
+            outScale = 30 if "LC8" in name else 10
             print(name)
             task = ee.batch.Export.image.toAsset(image= thisImg, description='ewf_ponds',
-                                                 assetId='projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds/' + name, scale=30,
+                                                 assetId='projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds/' + name, scale=outScale,
                                                  maxPixels=1.0E13, region=thisImg.geometry())
             while not is_connected:
                 print("No connection: sleeping")
