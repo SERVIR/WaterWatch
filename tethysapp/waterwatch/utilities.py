@@ -207,7 +207,7 @@ def pondClassifier(shape):
 
 
     latest = ee.Image(waterList.first())
-    avg = latest.select("water").reduceRegion(
+    avg = latest.select(".*_(water)$").reduceRegion(
         reducer=ee.Reducer.mean(),
         scale=30,
         maxPixels=1e5,
@@ -238,7 +238,7 @@ def pondClassifier(shape):
     # print('before cls get info')
     # print(cls.int8().getInfo())
 
-    val = ee.Number(avg.get('water'))
+    val = ee.Number(avg.get('mndwi_water'))
     test = ee.Number(ee.Algorithms.If(val.gte(0),0,3));
     cls = test.add(val.gt(0.25).uint8());
     cls = cls.add(val.gt(0.75).uint8());
@@ -252,13 +252,22 @@ def test(x):
 
 def makeTimeSeries(collection,feature,key=None,hasMask=False):
 
+    estreducer = ee.Reducer.mean().combine(ee.Reducer.stdDev(),None,True)
+
     def reducerMapping(img):
         # if hasMask:
         #     img = img.updateMask(img.select('cloudShadowMask'))
 
-        reduction = img.select('water').reduceRegion(ee.Reducer.mean(), feature.geometry(), 30)
+        reducerScale = img.projection().nominalScale()
+
+        reduction = img.reduceRegion(ee.Reducer.mean(), feature.geometry(), reducerScale)
+
+        vals = ee.Dictionary(reduction.values().reduce(estreducer))
+        avg = vals.get("mean")
+        stddev = vals.get("stdDev")
+
         date = img.get('system:time_start')
-        indexImage = ee.Image().set('indexValue', [ee.Number(date), reduction])
+        indexImage = ee.Image().set('indexValue', [ee.Number(date), ee.Dictionary({"water":avg,"stddev":stddev})])
         return indexImage
 
     filteredCollection = collection.filterBounds(feature.geometry()).sort("system:time_start")
@@ -494,7 +503,7 @@ print('githika')
 #ee.Image(waterCollection.select('water').mosaic())
 palette = {'palette': 'yellow,green,gray'}
 
-water_img = ee.Image(waterCollection.select('water').mosaic()).getMapId(palette)
+water_img = ee.Image(waterCollection.select('mndwi_water').mosaic()).getMapId(palette)
 print('thaqrun')
 
 print(water_img['tile_fetcher'].url_format)
@@ -559,7 +568,7 @@ def forecastFeature(lon,lat):
 
     lastTime = ee.Date(featureImg.get('system:time_start'))
 
-    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water'))
+    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('mndwi_water'))
     print('after pond fraction')
     print(pondFraction.getInfo())
 
