@@ -553,13 +553,13 @@ def forecastFeature(lon,lat):
     selPond = filterPond(lon,lat)
     print('before feature image')
 
-    featureImg = ee.Image(waterCollection.filterBounds(selPond).sort('system:time_start',False).first())
+    featureImg = waterCollection.filterBounds(selPond).sort('system:time_start',False).first()
 
     print('after feature img')
 
     lastTime = ee.Date(featureImg.get('system:time_start'))
 
-    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water'))
+    pondFraction = featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('water')
     print('after pond fraction')
     print(pondFraction.getInfo())
 
