@@ -274,14 +274,28 @@ var LIBRARY_OBJECT = (function() {
       };
 
     generate_chart = function(data,lat,lon,name){
-          console.log(data[0][1]);
+        console.log(data[0][0]);
         console.log(data[0][1].water);
+        var timeArr = []
         var waterArr=[]
+        var errArr = []
+        var timestamp, water, stddev,minerr,maxerr;
   for (var i = 0; i < data.length; i++) {
-      if(data[i][1].water!=null)
-            waterArr.push([data[i][0],data[i][1].water])
+        if(data[i][1].water!=null){
+            timestamp = data[i][0]
+            water = data[i][1].water
+            stddev = data[i][1].stddev
+            minerr = water - stddev
+            maxerr = water + stddev
+            if (minerr < 0) { minerr = 0}
+            if (maxerr > 1) { maxerr = 1}
+            timeArr.push(timestamp)
+            waterArr.push([timestamp,water])
+            errArr.push([timestamp,minerr,maxerr])
+        }
     }
-  console.log(waterArr);
+    console.log("water series",waterArr);
+    console.log("error series",errArr);
         Highcharts.stockChart('plotter',{
             chart: {
                 type:'line',
@@ -340,21 +354,37 @@ var LIBRARY_OBJECT = (function() {
                 },
                 title: {
                     text: 'Date'
-                }
+                },
             },
             yAxis: {
                 title: {
                     text: '%'
                 },
-                max: 1
+                max: 1,
+                min: 0,
             },
             exporting: {
                 enabled: true
             },
             series: [{
-                data:waterArr,
-                name: 'Historical percent coverage of water'
-            }]
+                data: waterArr,
+                name: 'Water coverage',
+                tooltip: {
+                    pointFormat: '<span style="font-weight: bold;">{series.name}</span>: <b>{point.y:.4f} %</b> '
+                }
+            },
+            { 
+                name: 'Water error',
+                type: 'errorbar',
+                data: errArr,
+                tooltip: {
+                    pointFormat: '(error range: {point.low:.4f}-{point.high:.4f} %)<br/>'
+                },
+            }],
+            // tooltip: {
+            //     valueDecimals: 4,
+            //     shared: true,
+            // }
         });
     };
     generate_forecast = function(data,lat,lon,name){
