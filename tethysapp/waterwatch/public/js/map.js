@@ -378,13 +378,12 @@ var LIBRARY_OBJECT = (function() {
                 type: 'errorbar',
                 data: errArr,
                 tooltip: {
-                    pointFormat: '(error range: {point.low:.4f}-{point.high:.4f} %)<br/>'
+                    pointFormat: '(Coverage range: {point.low:.4f}-{point.high:.4f} %)<br/>'
                 },
             }],
-            // tooltip: {
-            //     valueDecimals: 4,
-            //     shared: true,
-            // }
+            tooltip: {
+                shared: true,
+            }
         });
     };
     generate_forecast = function(data,lat,lon,name){
@@ -393,10 +392,11 @@ var LIBRARY_OBJECT = (function() {
           var data1 = []
           for (var i = 0; i < data.length; i++) {
               if (data[i][1].water != null) {
-                  data[i][1] = data[i][1].water;
-                  data1.push([data[i], data[i][1].water]);
+                //   data[i][1] = data[i][1].water;
+                  data1.push([data[i][0], data[i][1].water]);
               }
           }
+          console.log("forecast",data1)
         Highcharts.stockChart('forecast-plotter',{
           chart: {
               type:'line',
@@ -467,14 +467,18 @@ var LIBRARY_OBJECT = (function() {
               title: {
                   text: '%'
               },
-              max: 1
+              max: 1,
+              min: 0
           },
           exporting: {
               enabled: true
           },
           series: [{
               data:data1,
-              name: 'Forecast percent coverage of water'
+              name: 'Forecast percent coverage of water',
+              tooltip: {
+                pointFormat: '<span style="font-weight: bold;">{series.name}</span>: <b>{point.y:.4f} %</b> '
+            }
           }]
       });
   };
