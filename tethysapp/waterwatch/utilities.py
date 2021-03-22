@@ -201,13 +201,14 @@ def waterClassifier(img):
     return water2.addBands(img.select('cloudShadowMask'))
 
 
-def pondClassifier(shape):
+def pondClassifier(shape):        
     waterList = waterCollection.filterBounds(shape.geometry())\
                 .sort('system:time_start',False)
 
 
-    latest = ee.Image(waterList.first())
-    avg = latest.select(".*_(water)$").reduceRegion(
+    latest = ee.Image(waterList.reduce(ee.Reducer.firstNonNull()))
+
+    avg = latest.select(".*_water_.*").reduceRegion(
         reducer=ee.Reducer.mean(),
         scale=30,
         maxPixels=1e5,
@@ -238,7 +239,7 @@ def pondClassifier(shape):
     # print('before cls get info')
     # print(cls.int8().getInfo())
 
-    val = ee.Number(avg.get('mndwi_water'))
+    val = ee.Number(avg.values().reduce(ee.Reducer.mean()))
     test = ee.Number(ee.Algorithms.If(val.gte(0),0,3));
     cls = test.add(val.gt(0.25).uint8());
     cls = cls.add(val.gt(0.75).uint8());
@@ -305,6 +306,12 @@ def getClickedImage(xValue,yValue,feature):
     print('---------------------')
     return true_imageid,water_imageid,properties
 
+def prepGfs(img):
+    d = img.date()
+    offset = ee.Number(img.get("forecast_hours"))
+    new_date = d.advance(offset,"hour")
+    return img.set("system:time_start",new_date.millis())
+
 def accumGFS(collection,startDate,nDays):
   if (nDays>16):
     raise Warning('Max forecast days is 16, only producing forecast for 16 days...')
@@ -314,18 +321,14 @@ def accumGFS(collection,startDate,nDays):
   imgList = []
   precipScale = ee.Image(1).divide(ee.Image(1e3))
   for i in range(nDays+1):
-    cntMax =(24*(i+1))
-    forecastMeta = []
-    for j in range(cnt,cntMax+1):
-        forecastMeta.append(cnt)
-        cnt+=1
+    t1 = startDate.advance(i,'day')
+    t2 = t1.advance(1,"day")
 
-    dayPrecip = collection.filter(ee.Filter.inList('forecast_hours', forecastMeta))
+    dayPrecip = collection.filterDate(t1,t2)
     imgList.append(dayPrecip.sum().multiply(precipScale)
-      .set('system:time_start',startDate.advance(i,'day')))
+      .set('system:time_start',t1.millis()))
 
   return ee.ImageCollection(imgList)
-
 
 def accumCFS(collection,startDate,nDays):
     imgList = []
@@ -370,6 +373,7 @@ class fClass(object):
         self.n = ee.Image(n)
         self.alpha = ee.Image(alpha)
         self.pArea = feature.geometry().area()
+        print("pond area:",self.pArea.getInfo())
         self.initial = ee.Image(initCond)
         self.initTime = initTime
         self.pond = feature
@@ -383,13 +387,13 @@ class fClass(object):
           reducer=ee.Reducer.min(),
           scale=30,maxPixels=1e6
         ).get('elevation'))
-        print('after pond min')
+        print('after pond min', pondMin.getInfo())
         SoInit = ee.Image(0).where(elv.gte(pondMin).And(elv.lte(pondMin.add(3))),1)
         self.So = ee.Image(ee.Number(SoInit.reduceRegion(
           geometry=self.pond.geometry(),
           reducer=ee.Reducer.sum(),
           scale=30,maxPixels=1e6
-        ).get('constant'))).multiply(900)
+        ).get('constant'))).multiply(ee.Image.pixelArea())
         print('after init')
 
         # begin forecasting water area
@@ -403,8 +407,10 @@ class fClass(object):
 
         precipData = gfs.filterDate(modelDate,modelDate.advance(1,'hour'))\
                         .filterMetadata('forecast_hours','greater_than',0)\
-                        .select(['total_precipitation_surface'],['precip'])
+                        .select(['total_precipitation_surface'],['precip'])\
+                        .map(prepGfs)
         dailyPrecip = accumGFS(precipData,modelDate,forecastDays)
+        print(f"daily precip n: {dailyPrecip.size().getInfo()}")
 
         initIap = calcInitIap(cfs,modelDate,7)
         print('after tap')
@@ -415,21 +421,21 @@ class fClass(object):
               .addBands(A.multiply(hInit)).addBands(A).addBands(hInit)\
               .rename(['precip','Iap','vol','area','height']).clip(studyArea)\
               .set('system:time_start',modelDate.advance(-12,'hour').millis()).float()
-        print('first image')
+        print('first image',first.reduceRegion(ee.Reducer.mean(),self.pond.geometry(),30).getInfo())
 
         modelOut = ee.List(dailyPrecip.iterate(self._accumVolume,ee.List([first]))).slice(1)
         modelOut = ee.ImageCollection.fromImages(modelOut)
         print('model out')
 
-        pondPct = modelOut.select('area').map(self._pctArea)
+        results = modelOut.map(self._pctArea)
         print('pond pct')
 
-        ts = makeTimeSeries(pondPct.select('area'),self.pond,key='area')
+        ts = self._timeseries(results,self.pond,key='pctArea')
         return ts
 
     def _accumVolume(self,img,imgList):
         # extract out forcing and state variables
-        past = ee.Image(ee.List(imgList).get(-1)).clip(studyArea)
+        past = ee.Image(ee.List(imgList).get(-1))#.clip(studyArea)
         pastIt = past.select('Iap')
         pastPr = past.select('precip')
         pastAr = past.select('area')
@@ -453,8 +459,9 @@ class fClass(object):
         # empirical model for volume to area/height relationship
         ht = volume.divide(self.Vo).pow(ee.Image(1).divide(self.alpha))\
                   .divide(ee.Image(1).divide(self.h0)).rename(['height'])
+        ht = ht.where(ht.lt(0),0)
         area = self.So.multiply(ht.divide(self.h0).pow(self.alpha)).rename(['area'])
-        area = area.where(area.lt(0),1) # contrain area to real values
+        area = area.where(area.lt(0),0) # contrain area to real values
 
         # set state variables to output model step
         step = nowPr.addBands(deltaIt).addBands(volume).addBands(area).addBands(ht)\
@@ -462,9 +469,35 @@ class fClass(object):
 
         return ee.List(imgList).add(step.float())
 
+    def _timeseries(self,collection,feature,key=None):
+        if key is None:
+            key = "area"
+
+        def reducerMapping(img):
+        # if hasMask:
+        #     img = img.updateMask(img.select('cloudShadowMask'))
+
+            reduction = img.reduceRegion(ee.Reducer.mean(), feature.geometry(), 30)
+
+            date = img.get("system:time_start")
+            indexImage = ee.Image().set('indexValue', [ee.Number(date), ee.Dictionary({"water":reduction.get(key)})])
+            return indexImage
+
+        filteredCollection = collection.select(key).filterBounds(feature.geometry()).sort("system:time_start")
+
+        print("filtered")
+        indexCollection = filteredCollection.map(reducerMapping)
+        print("mapped")
+        indexCollection2 = indexCollection.aggregate_array('indexValue')
+        print("aggregated")
+        values = indexCollection2.getInfo()
+        print(values)
+        return values
+
     def _pctArea(self,img):
-        pct = ee.Image(img.divide(ee.Image(self.pArea)).copyProperties(img,['system:time_start']))
-        return pct.where(pct.gt(1),1)#.rename('pctArea')#
+        pct = ee.Image(img.select("area").divide(ee.Image(self.pArea)))
+        pct = pct.where(pct.gt(1),1).rename('pctArea')
+        return img.addBands(pct)
 
 
 studyArea = ee.Geometry.Rectangle([-15.866, 14.193, -12.990, 16.490])
@@ -562,16 +595,20 @@ def forecastFeature(lon,lat):
     selPond = filterPond(lon,lat)
     print('before feature image')
 
-    featureImg = ee.Image(waterCollection.filterBounds(selPond).sort('system:time_start',False).first())
+    coll = waterCollection.filterBounds(selPond).sort('system:time_start',False)
+    lastimg = ee.Image(coll.first())
+    bnames = lastimg.bandNames()
+
+    featureImg = ee.Image(coll.reduce(ee.Reducer.firstNonNull())).rename(bnames)
 
     print('after feature img')
 
-    lastTime = ee.Date(featureImg.get('system:time_start'))
+    lastTime = ee.Date(lastimg.get('system:time_start'))
 
-    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), 10).get('mndwi_water'))
-    print('after pond fraction')
-    print(pondFraction.getInfo())
+    reductionScale = lastimg.projection().nominalScale()
 
+    pondFraction = ee.Number(featureImg.reduceRegion(ee.Reducer.mean(), selPond.geometry(), reductionScale).get("mndwi_water"))
+    print('after pond fraction',pondFraction.getInfo())
 
     fModel = fClass(selPond,pondFraction,lastTime)
 
