@@ -274,8 +274,6 @@ var LIBRARY_OBJECT = (function() {
       };
 
     generate_chart = function(data,lat,lon,name){
-        console.log(data[0][0]);
-        console.log(data[0][1].water);
         var timeArr = []
         var waterArr=[]
         var errArr = []
@@ -294,8 +292,6 @@ var LIBRARY_OBJECT = (function() {
             errArr.push([timestamp,minerr,maxerr])
         }
     }
-    console.log("water series",waterArr);
-    console.log("error series",errArr);
         Highcharts.stockChart('plotter',{
             chart: {
                 type:'line',
@@ -320,7 +316,6 @@ var LIBRARY_OBJECT = (function() {
                                 var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
                                 xhr.done(function(data) {
                                     if("success" in data) {
-                                        console.log('data succerss')
                                         map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
                                         map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
                                         $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
@@ -387,8 +382,6 @@ var LIBRARY_OBJECT = (function() {
         });
     };
     generate_forecast = function(data,lat,lon,name){
-       console.log(data[0][1]);
-        console.log(data[0][1].water);
 
           var data1 = []
           for (var i = 0; i < data.length; i++) {
@@ -397,7 +390,6 @@ var LIBRARY_OBJECT = (function() {
                   data1.push([data[i][0], data[i][1].water]);
               }
           }
-          console.log("forecast",data1)
         Highcharts.stockChart('forecast-plotter',{
           chart: {
               type:'line',
@@ -419,18 +411,12 @@ var LIBRARY_OBJECT = (function() {
                               $("#layers_checkbox").addClass('hidden');
                               var lat = $("#current-lat").val();
                               var lon = $("#current-lon").val();
-                              console.log(lat);
-                              console.log(lon);
-                              console.log(this.x);
-                              console.log(this.y);
                               var xhr = ajax_update_database('mndwi',{'xValue':this.x,'yValue':this.y,'lat':lat,'lon':lon});
 
                               xhr.done(function(data) {
                                   if("success" in data) {
-                                      console.log("success")
                                       map.getLayers().item(3).getSource().setUrl(data.true_mapurl);
                                       map.getLayers().item(4).getSource().setUrl(data.water_mapurl);
-                                      console.log(data.true_mapurl);
                                       $("#meta-table").append('<tbody><tr><th>Latitude</th><td>'+(parseFloat(lat).toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(parseFloat(lon).toFixed(6))+'</td></tr><tr><th>Current Date</th><td>'+data.date+'</td></tr><tr><th>Scene Cloud Cover</th><td>'+data.cloud_cover+'</td></tr></tbody>');
                                       $("#reset").removeClass('hidden');
                                       $("#layers_checkbox").removeClass('hidden');
@@ -531,10 +517,8 @@ var LIBRARY_OBJECT = (function() {
         });
 
         $('#mndwi_toggle').change(function() {
-            console.log('from get mndi')
             // this will contain a reference to the checkbox
             if (this.checked) {
-                console.log(map.getLayers().item(4));
                 map.getLayers().item(4).setVisible(true);
             } else {
                 map.getLayers().item(4).setVisible(false);

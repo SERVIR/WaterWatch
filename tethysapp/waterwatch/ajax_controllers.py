@@ -3,9 +3,6 @@ import json
 from django.http import JsonResponse
 import datetime
 
-print('from ajax controllers')
-
-
 def timeseries(request):
 
     return_obj = {}
@@ -31,16 +28,11 @@ def timeseries(request):
 def forecast(request):
 
     return_obj = {}
-    print('from forecast')
     if request.is_ajax() and request.method == 'POST':
         info = request.POST
         lat = info.get('lat')
         lon = info.get('lon')
-    print('before try')
-
     try:
-        print(lon)
-        print(lat)
         ts_vals,coordinates,name = forecastFeature(lon,lat)
         return_obj["values"] = ts_vals
         return_obj["coordinates"] = coordinates
@@ -48,14 +40,9 @@ def forecast(request):
         return_obj["success"] = "success"
     except Exception as e:
         return_obj["error"] = "Error Processing Request. Error: "+ str(e)
-
-    print("processing complete...")
-
     return JsonResponse(return_obj)
 
 def mndwi(request):
-    print('from mndi')
-
     return_obj = {}
 
     if request.is_ajax() and request.method == 'POST':
@@ -64,8 +51,6 @@ def mndwi(request):
         x_val = info.get('xValue')
         y_val = info.get('yValue')
         clicked_date = datetime.datetime.fromtimestamp((int(x_val) / 1000)).strftime('%Y %B %d')
-        print('click date')
-
         lat = info.get('lat')
         lon = info.get('lon')
 
