@@ -12,7 +12,7 @@ Web Application
 
 .. note::
 
-    The following instructions have been tested on Ubuntu 16.04. Your workflow might be slightly different based on the operating system that you are using.
+    The following instructions have been tested on Ubuntu 18.04. Your workflow might be slightly different based on the operating system that you are using.
 
 
 Prerequisites
@@ -94,13 +94,13 @@ Download the source code from github. (Activate the tethys environment if it isn
     $ t
     (tethys)$ git clone https://github.com/SERVIR/WaterWatch
     (tethys)$ cd WaterWatch
-    (tethys)$ python setup.py develop
+    (tethys)$ tethys install -d
 
 Start the Tethys Server
 
 ::
 
-    (tethys)$ tms
+    (tethys)$ tstart
 
 
 You should now have the WaterWatch (Ferlo Ephemeral Water Body Monitoring Dashboard) app running on a development server on your machine. Tethys Platform provides a web interface called the Tethys Portal. You can access the app through the Tethys portal by opening http://localhost:8000/ (or if you provided custom host and port options to the install script then it will be <HOST>:<PORT>) in a new tab in your web browser.
@@ -202,7 +202,7 @@ Return to the main directory of the app. Then, execute the setup script (:file:`
 ::
 
     (tethys)$ cd $TETHYS_HOME/apps/WaterWatch/
-    (tethys)$ python setup.py install
+    (tethys)$ tethys install
 
 
 Collect Static Files and Workspaces

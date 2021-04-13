@@ -1,7 +1,23 @@
-from .utilities import checkFeature,getMNDWI,forecastFeature
+from .utilities import checkFeature,getMNDWI,forecastFeature,initLayers
 import json
 from django.http import JsonResponse
 import datetime
+from django.views.decorators.csrf import csrf_exempt
+@csrf_exempt
+def getPondsUrl(request):
+
+    return_obj = {}
+
+
+    if request.is_ajax() and request.method == 'POST':
+
+        try:
+            return_obj["url"] = initLayers()
+            return_obj["success"] = "success"
+
+        except Exception as e:
+            return_obj["error"] = "Error Processing Request. Error: "+ str(e)
+    return JsonResponse(return_obj)
 
 def timeseries(request):
 

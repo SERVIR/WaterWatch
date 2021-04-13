@@ -9,7 +9,6 @@
 /*****************************************************************************
  *                      LIBRARY WRAPPER
  *****************************************************************************/
-
 var LIBRARY_OBJECT = (function() {
     // Wrap the library in a package function
     "use strict"; // And enable strict mode for this library
@@ -49,10 +48,18 @@ var LIBRARY_OBJECT = (function() {
     /************************************************************************
      *                    PRIVATE FUNCTION IMPLEMENTATIONS
      *************************************************************************/
+	ajax_update_database("get-ponds-url",{}).done(function (data) {
+
+            if ("success" in data) {
+                if(localStorage.getItem('ponds_mapurl')){}
+                else localStorage.setItem('ponds_mapurl', data["url"])
+            }
+        });
 
     init_vars = function(){
+
         var $layers_element = $('#layers');
-	ponds_mapurl = $layers_element.attr('data-ponds-mapurl');
+
         //ponds_mapid = $layers_element.attr('data-ponds-mapid');
         //ponds_token = $layers_element.attr('data-ponds-token');
         $chartModal = $("#chart-modal");
@@ -105,7 +112,7 @@ var LIBRARY_OBJECT = (function() {
 
         var ponds_layer = new ol.layer.Tile({
             source: new ol.source.XYZ({
-                url: ponds_mapurl //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
+                url: localStorage.getItem('ponds_mapurl') //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
             })
         });
 
@@ -507,9 +514,11 @@ var LIBRARY_OBJECT = (function() {
         $(".alert").click(function(){
             $(".alert").alert("close");
         });
+
         $('#true_toggle').change(function() {
             // this will contain a reference to the checkbox
             if (this.checked) {
+
                 map.getLayers().item(3).setVisible(true);
             } else {
                 map.getLayers().item(3).setVisible(false);
@@ -519,6 +528,7 @@ var LIBRARY_OBJECT = (function() {
         $('#mndwi_toggle').change(function() {
             // this will contain a reference to the checkbox
             if (this.checked) {
+
                 map.getLayers().item(4).setVisible(true);
             } else {
                 map.getLayers().item(4).setVisible(false);
@@ -528,8 +538,10 @@ var LIBRARY_OBJECT = (function() {
         $('#ponds_toggle').change(function() {
             // this will contain a reference to the checkbox
             if (this.checked) {
+
                 map.getLayers().item(2).setVisible(true);
             } else {
+
                 map.getLayers().item(2).setVisible(false);
             }
         });

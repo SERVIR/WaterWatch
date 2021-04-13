@@ -28,6 +28,11 @@ class Waterwatch(TethysAppBase):
                 controller='waterwatch.controllers.home'
             ),
             UrlMap(
+                name='get-ponds-url',
+                url='waterwatch/get-ponds-url',
+                controller='waterwatch.ajax_controllers.getPondsUrl'
+            ),
+            UrlMap(
                 name='timeseries',
                 url='waterwatch/timeseries',
                 controller='waterwatch.ajax_controllers.timeseries'

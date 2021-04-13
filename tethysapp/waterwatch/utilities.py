@@ -498,7 +498,7 @@ cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface
 elv = ee.Image('USGS/SRTMGL1_003')
 
 def initLayers():
-    return pondsImgID
+    return pondsImgID['tile_fetcher'].url_format
 
 def filterPond(lon, lat):
     point = ee.Geometry.Point(float(lon), float(lat))
