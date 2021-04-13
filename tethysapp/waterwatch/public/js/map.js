@@ -48,13 +48,17 @@ var LIBRARY_OBJECT = (function() {
     /************************************************************************
      *                    PRIVATE FUNCTION IMPLEMENTATIONS
      *************************************************************************/
-	ajax_update_database("get-ponds-url",{}).done(function (data) {
 
-            if ("success" in data) {
-                if(localStorage.getItem('ponds_mapurl')){}
-                else localStorage.setItem('ponds_mapurl', data["url"])
-            }
-        });
+
+    
+  var ponds_url = JSON.parse(localStorage['ponds_url']);
+if(new Date(ponds_url.time_created) < new Date().setDate(new Date().getDate()-1)){
+  ajax_update_database("get-ponds-url", {}).done(function (data) {
+    if ("success" in data) {
+        localStorage.setItem('ponds_url', JSON.stringify({'url': data['url'], 'time_created': new Date().toString()}))
+    }
+});
+}
 
     init_vars = function(){
 
@@ -112,7 +116,7 @@ var LIBRARY_OBJECT = (function() {
 
         var ponds_layer = new ol.layer.Tile({
             source: new ol.source.XYZ({
-                url: localStorage.getItem('ponds_mapurl') //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
+                url: localStorage.getItem('ponds_url') //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
             })
         });
 

@@ -491,13 +491,14 @@ Pimage = ponds_cls.reduceToImage(
 )
 visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
 
-pondsImgID = Pimage.getMapId(visParams)
+#pondsImgID = Pimage.getMapId(visParams)
 
 gfs = ee.ImageCollection('NOAA/GFS0P25')
 cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'],['precip'])
 elv = ee.Image('USGS/SRTMGL1_003')
 
 def initLayers():
+    pondsImgID = Pimage.getMapId(visParams)
     return pondsImgID['tile_fetcher'].url_format
 
 def filterPond(lon, lat):
