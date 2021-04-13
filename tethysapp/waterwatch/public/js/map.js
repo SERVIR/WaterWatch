@@ -118,7 +118,7 @@ var LIBRARY_OBJECT = (function() {
         //       url: 'https://server.arcgisonline.com/ArcGIS/rest/services/' +
         //           'World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
         //     })
-        //   });
+        //   }); //
 
         var ponds_layer = new ol.layer.Tile({
             source: new ol.source.XYZ({
