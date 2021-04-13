@@ -2,7 +2,7 @@ import ee
 import urllib.request
 import time
 from ee.batch import Export
-
+from datetime import date
 ee.Initialize()
 
 
@@ -286,8 +286,8 @@ WATER_THRESHS = {
 }
 
 # change dates to range to process
-iniDate = ee.Date('2021-04-01')
-today = ee.Date('2021-04-12')
+iniDate = ee.Date(str(date.today())+'T00:00:00')
+today = ee.Date(str(date.today())+'T23:59:59')
 endDate = ee.Date(today)
 
 # You will want to use ur features instead
