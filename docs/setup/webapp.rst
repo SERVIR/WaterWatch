@@ -162,12 +162,9 @@ This how the statement looks before changing it. Currently the service account e
     try:
         ee.Initialize()
     except EEException as e:
-        from oauth2client.service_account import ServiceAccountCredentials
-        credentials = ServiceAccountCredentials.from_p12_keyfile(
+        credentials = ServiceAccountCredentials(
         service_account_email='',
-        filename='',
-        private_key_password='notasecret',
-        scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
+        filename='/home/productionmachine/private_key.json')
         ee.Initialize(credentials)
 
 
@@ -178,12 +175,9 @@ This is how it could look like when you are done.
     try:
         ee.Initialize()
     except EEException as e:
-        from oauth2client.service_account import ServiceAccountCredentials
-        credentials = ServiceAccountCredentials.from_p12_keyfile(
+        credentials = ServiceAccountCredentials(
         service_account_email='myserviceaccount.gi@google.com',
-        filename='/home/productionmachine/private_key.pem',
-        private_key_password='notasecret',
-        scopes=ee.oauth.SCOPE + ' https://www.googleapis.com/auth/drive ')
+        filename='/home/productionmachine/private_key.json')
         ee.Initialize(credentials)
 
 .. Note::
