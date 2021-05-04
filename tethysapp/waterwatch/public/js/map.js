@@ -98,6 +98,7 @@ if(pondsList[j]['geometry']['coordinates']){
                 for(i=0;i<names.length;i++){
 		        var newbox=document.createElement('input');
 		        newbox.type="radio";
+                        newbox.name="radiogroup";
 		        newbox.value=centers[i];
 			newbox.onclick=function(){
                             if(this.checked){
