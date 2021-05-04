@@ -65,7 +65,58 @@ var LIBRARY_OBJECT = (function() {
             }
         });
     }
-
+     ajax_update_database("get-ponds-list", {}).done(function (data) {
+            if ("success" in data) {
+var j;
+var obj=[];
+var centers=[];
+var names=[];
+                var pondsList=data['ponds'];
+                for(j=0;j<pondsList.length;j++){
+if(pondsList[j]['geometry']['coordinates']){
+                	var nn=pondsList[j]['geometry']['coordinates'][0];
+                
+                        var name=pondsList[j]['properties']['Nom'];
+         
+                        if(name.length<2) name=' Unnamed pond';
+                        var k;
+                         var xx=0,yy=0;
+                        for(k=0;k<nn.length;k++){
+ 
+                            xx=xx+nn[k][0];
+                            yy=yy+nn[k][1];
+                            
+                        }
+                        var center=[xx/nn.length,yy/nn.length];
+			if(center[0]&& center[1]){
+		        centers.push(center);
+                        names.push(name);
+}
+		}
+                }
+                var i;
+                for(i=0;i<names.length;i++){
+		        var newbox=document.createElement('input');
+		        newbox.type="checkbox";
+		        newbox.value=centers[i];
+			newbox.onclick=function(){
+                            if(this.checked){
+					console.log([parseFloat(this.value.split(',')[0]),parseFloat(this.value.split(',')[1])]);
+			
+				map.getView().setCenter(ol.proj.transform([parseFloat(this.value.split(',')[0]),parseFloat(this.value.split(',')[1])],'EPSG:4326','EPSG:3857'));
+map.getView().setZoom(16);
+					}
+                        }
+		        var lbl=document.createElement('label');
+		        lbl.innerHTML=names[i];
+		        document.getElementById('cboxes').appendChild(newbox);
+		        document.getElementById('cboxes').appendChild(lbl);
+		       document.getElementById('cboxes').appendChild(document.createElement('br'));
+                }
+             
+              
+            }
+        });
     init_vars = function(){
 
         var $layers_element = $('#layers');
@@ -126,6 +177,9 @@ var LIBRARY_OBJECT = (function() {
             })
         });
 
+        console.log(ponds_layer.getSource());
+        var b=ponds_layer.getSource();
+console.log(b.features);
         select_feature_source = new ol.source.Vector();
         select_feature_layer = new ol.layer.Vector({
             source: select_feature_source,

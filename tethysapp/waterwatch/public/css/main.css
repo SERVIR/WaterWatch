@@ -96,3 +96,14 @@
     /*right: 0;*/
     /*left: 0;*/
 /*}*/
+.map{
+    position: relative;
+}
+.topleft {
+  position: absolute;
+  top: 28px;
+  left: 36px;
+  font-size: 18px;
+    z-index: 1;
+}
+
