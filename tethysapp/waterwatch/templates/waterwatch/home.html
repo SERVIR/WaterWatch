@@ -1,6 +1,7 @@
 {% extends "waterwatch/base.html" %}
 {% load tethys_gizmos %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block styles %}
 {{ block.super }}
@@ -43,21 +44,33 @@
 {% endblock %}
 
 {% block app_content %}
-<style>
-    #map{
-        height:100%;
-        position:relative;
-    }
-    #graph{
-        height:100%;
-    }
-    #alert-box {
-        width:70%;
-        margin-left:15%;
-        margin-top:1%;
-        position:absolute;
-    }
-</style>
+<!--<style>-->
+<!--    #map{-->
+<!--        height:100%;-->
+<!--        position:relative;-->
+<!--    }-->
+<!--    #graph{-->
+<!--        height:100%;-->
+<!--    }-->
+
+<!--    #menulayers{-->
+<!--	position: absolute;-->
+<!--    	bottom: 175px;-->
+<!--	left: 5px;-->
+<!--    	width: 375px;-->
+<!--    	height:355px;-->
+<!--	background-color: rgba(0, 60, 136, 0.7);-->
+<!--	color: #fff;-->
+<!--	padding: 8px 12px;-->
+<!--	font-size: 12px;-->
+<!--	z-index: 99999;-->
+<!--}-->
+
+
+<!--#menulayers > ul {-->
+<!--	list-style: none;-->
+<!--}-->
+<!--</style>-->
 
 <div class="alert alert-info alert-dismissible intro_message" role="alert">
     <div align="center">
@@ -67,10 +80,11 @@
     </div>
 </div>
 
+
+
+
 <div id="map" class="map">
-<div id="cboxes" class="topleft" style="border:2px black solid;background: aliceblue;height:200px;width:250px;overflow: scroll;padding: 10px">
-<label>Select a pond:</label><br>
-</div>
+
     <div id="map-view-legend" class="map-view-legend ol-unselectable ol-control">
         <div>
             <svg width="20" height="20" viewPort="0 0 20 20" version="1.1"
@@ -94,14 +108,7 @@
             > 75% Water Coverage
         </div>
     </div>
-    <div id="gee-attr" class="gee-attr ol-unselectable ol-control">
-        <div align="center">
-            <p style="color:white;"> Powered by <img src="https://servir-rlcms.appspot.com/static/img/google.png" width="17%"> Earth Engine <img src="https://servir-rlcms.appspot.com/static/img/gee.png" width="7%"> </p>
-        </div>
-    </div>
-    <div id="zoom-attr" class="zoom-attr ol-unselectable ol-control">
-        <div id="zoomlevel"></div>
-    </div>
+
     <!--<div id="zoomlevel"></div>-->
 </div>
 
@@ -124,8 +131,14 @@
                 <div class="modal-body">
                     <h1>Disclaimer:</h1>
                     <p>This application is currently in Beta. It is not to be used for any operational purpose.The SERVIR Project, NASA, and USAID, make no express or implied warranty of this application and associated data as to the merchantability or fitness for a particular purpose. Neither the US Government nor its contractors shall be liable for special, consequential or incidental damages attributed to this application and associated data.</p>
+                                 <div id="gee-attr" class="gee-attr ol-unselectable ol-control">
+        <div align="center">
+            <p style="color:white;"> Powered by <img src="https://servir-rlcms.appspot.com/static/img/google.png" width="17%"> Earth Engine <img src="https://servir-rlcms.appspot.com/static/img/gee.png" width="7%"> </p>
+        </div>
+    </div>
                     <p><a href="https://servirglobal.net/Privacy-Terms-of-Use" target="_blank">Privacy and Terms of Use</a></p>
                 </div>
+
                 <div class="modal-footer">
                     <div align="center" id="logos">
                         <div class="logo-image"><a href="http://www.usaid.gov/" target="_blank"><img src="https://servirglobal.net/Portals/_default/Skins/Servir2015/img/usaid.png"></a></div>
@@ -195,12 +208,12 @@
                     <table id="meta-table" class="table table-responsive table-condensed table-hover">
                     </table>
                     <div id="info" class="hidden info"></div>
-                    <div id="layers_checkbox" class="checkbox">
+                    <div id="layers_checkbox" class="checkbox" style="display:none">
                         <label><input type="checkbox" id="true_toggle" name="true_toggle" checked>Natural-color Layer</label>&nbsp
                         <label><input type="checkbox" id="mndwi_toggle" name="mndwi_toggle" checked>MNDWI Layer</label>&nbsp
                         <label><input type="checkbox" id="ponds_toggle" name="ponds_toggle" checked>Ponds Layer</label>
                     </div>
-                    <br>
+                 
                     <span>Note: The zoom level needs to be 13 or greater to retrieve data.</span>
                     <br>
                     <button type="button" name="reset" id="reset" class="btn btn-primary hidden" onclick="window.location.reload();">Reset Map</button>

@@ -49,6 +49,24 @@ var LIBRARY_OBJECT = (function() {
      *                    PRIVATE FUNCTION IMPLEMENTATIONS
      *************************************************************************/
 
+document.getElementById("myInput").onkeyup =    function() {
+console.log('hjhj');
+    var input, filter, ul, li, a, i, txtValue;
+    input = document.getElementById("myInput");
+    filter = input.value.toUpperCase();
+    ul = document.getElementById("myUL");
+    li = ul.getElementsByTagName("li");
+    for (i = 0; i < li.length; i++) {
+        a = li[i].getElementsByTagName("a")[0];
+        txtValue = a.innerHTML;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+        } else {
+            li[i].style.display = "none";
+        }
+    }
+ 
+}
     if(localStorage['ponds_url']){
         var ponds_url = JSON.parse(localStorage['ponds_url']);
         if(new Date(ponds_url.time_created) < new Date().setDate(new Date().getDate()-1)){
@@ -66,58 +84,87 @@ var LIBRARY_OBJECT = (function() {
         });
     }
      ajax_update_database("get-ponds-list", {}).done(function (data) {
-            if ("success" in data) {
-var j;
-var obj=[];
-var centers=[];
-var names=[];
-                var pondsList=data['ponds'];
-                for(j=0;j<pondsList.length;j++){
-if(pondsList[j]['geometry']['coordinates']){
-                	var nn=pondsList[j]['geometry']['coordinates'][0];
-                
-                        var name=pondsList[j]['properties']['Nom'];
-         
-                        if(name.length<2) name=' Unnamed pond';
-                        var k;
-                         var xx=0,yy=0;
-                        for(k=0;k<nn.length;k++){
+         if ("success" in data) {
+             var j;
+             var obj = [];
+             var centers = [];
+             var names = [];
+             var pondsList = data['ponds'];
+             for (j = 0; j < pondsList.length; j++) {
+                 if (pondsList[j]['geometry']['coordinates']) {
+                     var nn = pondsList[j]['geometry']['coordinates'][0];
+
+                     var name = pondsList[j]['properties']['Nom'];
+
+                     if (name.length < 2) name = 'Unnamed pond';
+                     var k;
+                     var xx = 0, yy = 0;
+                     for (k = 0; k < nn.length; k++) {
+
+                         xx = xx + nn[k][0];
+                         yy = yy + nn[k][1];
+
+                     }
+                     var center = [xx / nn.length, yy / nn.length];
+                     if (center[0] && center[1] && !names.includes(name)) {
+                         centers.push(center);
+                         names.push(name);
+                     }
+                 }
+             }
+names.sort();
+           //  console.log(names);
+  var i;
+var myNodelist = document.getElementsByTagName("LI");
+var i;
+for (i = 0; i < names.length; i++) {
+    var li = document.createElement("li");
+var a=document.createElement('a');
+    a.id = centers[i];
+ a.innerHTML = names[i];
  
-                            xx=xx+nn[k][0];
-                            yy=yy+nn[k][1];
-                            
+a.onclick = function () {	
+
+                            console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
+
+                          //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
+                            //map.getView().setZoom(16);
+                            var view=map.getView();
+                            view.animate({
+                                 center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
+                                 zoom:16
+                            });
                         }
-                        var center=[xx/nn.length,yy/nn.length];
-			if(center[0]&& center[1]){
-		        centers.push(center);
-                        names.push(name);
+ li.appendChild(a);
+
+    document.getElementById("myUL").appendChild(li);
+
 }
-		}
-                }
-                var i;
-                for(i=0;i<names.length;i++){
-		        var newbox=document.createElement('input');
-		        newbox.type="radio";
-                        newbox.name="radiogroup";
-		        newbox.value=centers[i];
-			newbox.onclick=function(){
-                            if(this.checked){
-					console.log([parseFloat(this.value.split(',')[0]),parseFloat(this.value.split(',')[1])]);
-			
-				map.getView().setCenter(ol.proj.transform([parseFloat(this.value.split(',')[0]),parseFloat(this.value.split(',')[1])],'EPSG:4326','EPSG:3857'));
-map.getView().setZoom(16);
-					}
+  
+
+                /*for(i=0;i<names.length;i++) {
+                    var newbox = document.createElement('input');
+                    newbox.type = "radio";
+                    newbox.name = "radiogroup";
+                    newbox.value = centers[i];
+                    newbox.onclick = function () {
+                        if (this.checked) {
+                            console.log([parseFloat(this.value.split(',')[0]), parseFloat(this.value.split(',')[1])]);
+
+                            map.getView().setCenter(ol.proj.transform([parseFloat(this.value.split(',')[0]), parseFloat(this.value.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
+                            map.getView().setZoom(16);
                         }
-		        var lbl=document.createElement('label');
-		        lbl.innerHTML=names[i];
-		        document.getElementById('cboxes').appendChild(newbox);
-		        document.getElementById('cboxes').appendChild(lbl);
-		       document.getElementById('cboxes').appendChild(document.createElement('br'));
-                }
-             
-              
-            }
-        });
+                    }
+                    var lbl = document.createElement('label');
+                    lbl.innerHTML = names[i];
+                    document.getElementById('cboxes').appendChild(newbox);
+                    document.getElementById('cboxes').appendChild(lbl);
+                    document.getElementById('cboxes').appendChild(document.createElement('br'));
+                }*/
+            // autocomplete(document.getElementById("myInput"), names);
+         }
+     });
+
     init_vars = function(){
 
         var $layers_element = $('#layers');
@@ -148,7 +195,175 @@ map.getView().setZoom(16);
             })
         });
 
+	var region_layer = new ol.layer.Tile({
+	   title: 'Region Senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:region_layer', TILED: true}
+	   }),
+            visible: false,
+            name:'region_Senegal'
+	 });
+console.log('hei');
+	var arrondissement_layer = new ol.layer.Tile({
+	   title: 'Arrondissement Senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:arrondissement_senegal', TILED: true}
+	   }),
+            visible: false,
+            name:'arrondissement_Senegal'
+	 });
+	var departement_layer = new ol.layer.Tile({
+	   title: 'layer_departement_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:layer_departement_senegal', TILED: true}
+	   }),
+            visible: false,
+            name:'layer_departement_senegal'
+	 });
+	var commune_layer = new ol.layer.Tile({
+	   title: 'layer_commune_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:layer_commune_senegal', TILED: true}
+	   }),
+            visible: false,
+            name:'layer_commune_senegal'
+	 });
+	var village_layer = new ol.layer.Tile({
+	   title: 'Village Wendou',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:Village', TILED: true}
+	   }),
+            zIndex: 900,
+            visible: false,
+            name:'Village_Wendou'
+	 });
+	var Axe_de_transhumance = new ol.layer.Tile({
+	   title: 'Axe_de_transhumance',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:Axe_de_transhumance', TILED: true}
+	   }),
+            zIndex: 900,
+            visible: false,
+            name:'Axe_de_transhumance'
+	 });
+	var couloirs_sud = new ol.layer.Tile({
+	   title: 'couloirs_sud',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:couloirs_sud', TILED: true}
+	   }),
+            zIndex: 900,
+            visible: false,
+            name:'couloirs_sud'
+	 });
+	var up_senegal = new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wms',
+	     params: {LAYERS: 'wendou:up_senegal', TILED: true}
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_praps=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_pafae=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_prodam=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_padaer=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_pasa=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_pdesoc=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_avsf=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
+	var up_papel=new ol.layer.Tile({
+	   title: 'up_senegal',
+	   source: new ol.source.TileWMS({
+	     url: 'https://wendou_geoserver.csesn.dev/geoserver/wendou/wms?service=WMS&version=1.1.0&request=GetMap&layers=wendou%3AUnite_pastorale&styles=wendou%3Aup&bbox=405129.61089999974%2C1514073.715412192%2C795299.9430384059%2C1822606.6820437144&width=768&height=607&srs=EPSG%3A32628',
+	   }),
+            zIndex: 910,
+            visible: false,
+            name:'up_senegal'
+	 });
 
+
+
+		var namestyle = new ol.style.Style({
+			text: new ol.style.Text({
+			  font: '20px Verdana',
+			  text: 'TZ',
+			  fill: new ol.style.Fill({
+				color: [64, 64, 64, 0.75]
+			  })
+			})
+		});
+        var defaultStyles = [
+		new ol.style.Style({
+			fill: new ol.style.Fill({
+				color: 'white'
+			}),
+			stroke: new ol.style.Stroke({color: 'black', width: 2})
+		})
+	];
 
         var west_africa = new ol.Feature(new ol.geom.Polygon([[[-2025275.5014440303,1364859.5770601076],[-1247452.3016140766,1364859.5770601076],[-1247452.3016140766,1898084.286377496],[-2025275.5014440303,1898084.286377496],[-2025275.5014440303,1364859.5770601076]]]));
 
@@ -203,8 +418,17 @@ console.log(b.features);
             source: true_source
             // url:""
         });
+        //  var mndwi_layer = new ol.layer.Tile({
+        //     source: new ol.source.XYZ({
+        //         url: mndwi_mapid
+        //             // "https://earthengine.googleapis.com/map/"+mndwi_mapid+"/{z}/{x}/{y}?token="+mndwi_token
+        //     }),
+        //     visible: true,
+        //     name:'mndwi_layer'
+        // });
 
-        layers = [base_map,base_map2,ponds_layer,true_layer,water_layer,boundary_layer,select_feature_layer];
+      //  layers = [base_map,base_map2,ponds_layer,true_layer,water_layer,boundary_layer,select_feature_layer];
+               layers = [base_map, base_map2,ponds_layer, true_layer, water_layer, select_feature_layer, region_layer, commune_layer, arrondissement_layer, village_layer, departement_layer, Axe_de_transhumance, couloirs_sud, up_praps, up_pafae, up_prodam, up_padaer, up_pasa, up_pdesoc, up_avsf, up_papel];
         map = new ol.Map({
             target: 'map',
             layers: layers,
@@ -213,6 +437,46 @@ console.log(b.features);
                 zoom: 10
             })
         });
+        		var params1 = layers[13].getSource().getParams();
+	        params1.cql_filter = "Projet = 'PRAPS'";
+		layers[13].getSource().updateParams(params1);
+
+		var params2 = layers[13].getSource().getParams();
+	        params2.cql_filter = "Projet = 'PAFA-E'";
+		layers[14].getSource().updateParams(params2);
+
+		var params3 = layers[14].getSource().getParams();
+	        params3.cql_filter = "Projet = 'PRODAM'";
+		layers[15].getSource().updateParams(params3);
+
+		var params4 = layers[15].getSource().getParams();
+	        params4.cql_filter = "Projet = 'PADAER'";
+		layers[16].getSource().updateParams(params4);
+
+		var params5 = layers[16].getSource().getParams();
+	        params5.cql_filter = "Projet = 'PASA'";
+		layers[17].getSource().updateParams(params5);
+
+		var params6 = layers[17].getSource().getParams();
+	        params6.cql_filter = "Projet = 'PDESOC'";
+		layers[18].getSource().updateParams(params6);
+
+		var params7 = layers[18].getSource().getParams();
+	        params7.cql_filter = "Projet = 'AVSF'";
+		layers[19].getSource().updateParams(params7);
+
+		var params8 = layers[19].getSource().getParams();
+	        params8.cql_filter = "Projet = 'PAPEL'";
+		layers[20].getSource().updateParams(params8);
+
+		var mouse_position = new ol.control.MousePosition({
+			coordinateFormat: ol.coordinate.createStringXY(4),
+			projection: 'EPSG:4326',
+			className: 'custom-mouse-position',
+			target:'coordonnees',
+			undefinedHTML: '&nbsp;'
+		});
+		map.addControl(mouse_position);
 
         map.getLayers().item(1).setVisible(false);
 
@@ -611,7 +875,126 @@ console.log(b.features);
             }
         });
 
-
+  $('#select_region_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(6).setVisible(true);
+            } else {
+                map.getLayers().item(6).setVisible(false);
+            }
+        });
+        $('#select_commune_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(7).setVisible(true);
+            } else {
+                map.getLayers().item(7).setVisible(false);
+            }
+        });
+        $('#select_arrondissement_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(8).setVisible(true);
+            } else {
+                map.getLayers().item(8).setVisible(false);
+            }
+        });
+        $('#select_village_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(9).setVisible(true);
+            } else {
+                map.getLayers().item(9).setVisible(false);
+            }
+        });
+        $('#select_departement_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(10).setVisible(true);
+            } else {
+                map.getLayers().item(10).setVisible(false);
+            }
+        });
+        $('#select_Axe_de_transhumance_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(11).setVisible(true);
+            } else {
+                map.getLayers().item(11).setVisible(false);
+            }
+        });
+        $('#select_couloir_de_transhumance_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(12).setVisible(true);
+            } else {
+                map.getLayers().item(12).setVisible(false);
+            }
+        });
+        $('#praps_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(13).setVisible(true);
+            } else {
+                map.getLayers().item(13).setVisible(false);
+            }
+        });
+        $('#pafae_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(14).setVisible(true);
+            } else {
+                map.getLayers().item(14).setVisible(false);
+            }
+        });
+        $('#prodam_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(15).setVisible(true);
+            } else {
+                map.getLayers().item(15).setVisible(false);
+            }
+        });
+        $('#padaer_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(16).setVisible(true);
+            } else {
+                map.getLayers().item(16).setVisible(false);
+            }
+        });
+        $('#pasa_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(17).setVisible(true);
+            } else {
+                map.getLayers().item(17).setVisible(false);
+            }
+        });
+        $('#pdesoc_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(18).setVisible(true);
+            } else {
+                map.getLayers().item(18).setVisible(false);
+            }
+        });
+        $('#avsf_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(19).setVisible(true);
+            } else {
+                map.getLayers().item(19).setVisible(false);
+            }
+        });
+        $('#papel_layer').change(function() {
+            // this will contain a reference to the checkbox
+            if (this.checked) {
+                map.getLayers().item(20).setVisible(true);
+            } else {
+                map.getLayers().item(20).setVisible(false);
+            }
+        });
     });
 
     return public_interface;

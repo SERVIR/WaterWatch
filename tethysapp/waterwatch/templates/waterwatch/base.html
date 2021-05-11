@@ -1,6 +1,7 @@
 {% extends "tethys_apps/app_base.html" %}
 
 {% load staticfiles %}
+{% load i18n %}
 
 {% block title %}{{ tethys_app.name }}{% endblock %}
 
@@ -13,6 +14,41 @@
 {% block app_title %}{{ tethys_app.name }}{% endblock %}
 
 {% block app_navigation_items %}
+
+
+    <input id="myInput" type="text" name="myCountry" placeholder="Search for ponds">
+  
+<ul id="myUL">
+	</ul>
+
+    <div id="zoom-attr" class="zoom-attr ol-unselectable ol-control">
+        <div id="zoomlevel"></div>
+    </div>
+<div id="menulayers" class="checkbox">
+	<h3 style="color:red;">{% trans "Couches" %}</h3>
+	<ul>
+<!--		<li><label><input type="checkbox" id="base_map" name="base_map" checked>Base Map 01</label> -->
+		<li><label><input type="checkbox" id="ponds_layer" name="ponds_layer" checked>Mares</label>
+		<label><input type="checkbox" id="select_mndwi_layer" name="mndwi_layer" >MNDWI</label>
+		<label><input type="checkbox" id="select_region_layer" name="region_layer">Region</label></li>&nbsp
+		<li><label><input type="checkbox" id="select_departement_layer" name="departement_layer" >Depart.</label>
+		<label><input type="checkbox" id="select_commune_layer" name="commune_layer" >Commune</label>
+		<label><input type="checkbox" id="select_village_layer" name="village_layer" >Village</label></li>&nbsp
+		<li><label><input type="checkbox" id="select_couloir_de_transhumance_layer" name="couloir_de_transhumance">Couloir de Transhumance</label>
+		<label><input type="checkbox" id="select_Axe_de_transhumance_layer" name="Axe_de_transhumance">Axe de Transhumance</label></li>&nbsp
+	<span style="color:red;">Unites Pastorales</span>
+		<li><label><input type="checkbox" id="praps_layer" name="praps_layer">PRAPS (2015-En cours)</label>
+		<label><input type="checkbox" id="pafae_layer" name="pafae_layer">PAFA-E (2014-En cours)</label></li>&nbsp
+		<li><label><input type="checkbox" id="prodam_layer" name="prodam_layer">PRODAM (1998-2004/2004-2011/2011-En cours)</label></li>&nbsp
+		<li><label><input type="checkbox" id="padaer_layer" name="padaer_layer">PADAER (2014-2018)</label>
+		<label><input type="checkbox" id="pasa_layer" name="pasa_layer">PASA (2014-2018)</label></li>&nbsp
+		<li><label><input type="checkbox" id="pdesoc_layer" name="pdesoc_layer">PDESOC (2011-2015)</label>
+		<label><input type="checkbox" id="avsf_layer" name="avsf_layerl">AVSF (Depuis 2007)</label></li>&nbsp
+		<li><label><input type="checkbox" id="papel_layer" name="papel_layer">PAPEL (1993-2002/2003-2007)</label></li>&nbsp
+	</ul>
+
+
+</div>
 
 {% endblock %}
 
