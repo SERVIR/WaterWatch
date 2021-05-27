@@ -466,6 +466,13 @@ lc8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_RT')
 st2 = ee.ImageCollection('COPERNICUS/S2')
 ponds = ee.FeatureCollection('projects/servir-wa/services/ephemeral_water_ferlo/ferlo_ponds') \
     .map(addArea).filter(ee.Filter.gt("area", 10000))
+
+region = ee.FeatureCollection('users/satigebelal/region').map(addArea)
+commune = ee.FeatureCollection('users/satigebelal/commune').map(addArea)
+arrondissement = ee.FeatureCollection('users/satigebelal/arrondissement')
+countries = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017')
+area_senegal = ee.FeatureCollection(countries).filter(ee.Filter.eq('country_na','Senegal'));
+village = ee.FeatureCollection('users/satigebelal/Village');
 today = time.strftime("%Y-%m-%d")
 
 iniTime = ee.Date('2015-01-01')
@@ -507,6 +514,11 @@ Pimage = ponds_cls.reduceToImage(
 visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
 
 # pondsImgID = Pimage.getMapId(visParams)
+regionImgID = region.getMapId()
+arrondissementImgID = arrondissement.getMapId()
+communeImgID = commune.getMapId()
+villageImgID = village.getMapId()
+
 
 gfs = ee.ImageCollection('NOAA/GFS0P25')
 cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'], ['precip'])
@@ -522,7 +534,14 @@ def pondsList():
     xx = ponds.getInfo()
     return xx['features'] #np.unique([i['properties']['Nom'] for i in xx['features'] if i['properties']['Nom']]).tolist()
 
-
+def regionLayers():
+    return region
+def communeLayers():
+    return commune
+def arrondissementLayers():
+    return arrondissement
+def villageLayers():
+    return village
 def filterPond(lon, lat):
     point = ee.Geometry.Point(float(lon), float(lat))
     sampledPoint = ee.Feature(ponds.filterBounds(point).first())
@@ -541,7 +560,9 @@ def checkFeature(lon, lat):
     coordinates = selPond.getInfo()['features'][0]['geometry']['coordinates']
     return ts_values, coordinates, name
 
-
+def checkVillage():
+    coordinates = village.getInfo()['features']
+    return coordinates
 def forecastFeature(lon, lat):
     selPond = filterPond(lon, lat)
     coll = waterCollection.filterBounds(selPond).sort('system:time_start', False)
@@ -572,3 +593,64 @@ def getMNDWI(lon, lat, xValue, yValue):
     mndwi_img = getClickedImage(xValue, yValue, selPond)
 
     return mndwi_img
+
+def detailsFeature(lon,lat):
+    point = ee.Geometry.Point(float(lon), float(lat))
+
+    sampledPoint = ee.Feature(ponds.filterBounds(point).first())
+    sampledRegion = ee.Feature(region.filterBounds(point).first())
+    sampledCommune = ee.Feature(commune.filterBounds(point).first())
+    sampledArrondissement = ee.Feature(arrondissement.filterBounds(point).first())
+
+    computedValuePonds = sampledPoint.getInfo()['properties']['uniqID']
+    computedValueRegion = sampledRegion.getInfo()['properties']['id_reg']
+    computedValueCommune = sampledCommune.getInfo()['properties']['id_com']
+    computedValueArrondissement = sampledArrondissement.getInfo()['properties']['id_arro']
+
+    selPond = ponds.filter(ee.Filter.eq('uniqID', computedValuePonds))
+    selRegion = ponds.filter(ee.Filter.eq('id_reg', computedValueRegion))
+    selCommune = ponds.filter(ee.Filter.eq('id_com', computedValueCommune))
+    selArrondissement = ponds.filter(ee.Filter.eq('id_arro', computedValueArrondissement))
+
+    return selPond, selRegion, selCommune, selArrondissement
+
+def filterRegion(lon, lat):
+    point = ee.Geometry.Point(float(lon), float(lat))
+    sampledPoint = ee.Feature(region.filterBounds(point).first())
+
+    computedValue = sampledPoint.getInfo()['properties']['id_reg']
+
+    selRegion = region.filter(ee.Filter.eq('id_reg', computedValue))
+
+    return selRegion
+
+def filterCommune(lon, lat):
+    point = ee.Geometry.Point(float(lon), float(lat))
+    sampledPoint = ee.Feature(commune.filterBounds(point).first())
+
+    computedValue = sampledPoint.getInfo()['properties']['id_com']
+
+    selCommune = commune.filter(ee.Filter.eq('id_com', computedValue))
+
+    return selCommune
+
+def filterArrondissement(lon, lat):
+    point = ee.Geometry.Point(float(lon), float(lat))
+    sampledPoint = ee.Feature(arrondissement.filterBounds(point).first())
+
+    computedValue = sampledPoint.getInfo()['properties']['id_arro']
+
+    selArrondissement = arrondissement.filter(ee.Filter.eq('id_arro', computedValue))
+
+    return selArrondissement
+
+def filterVillage(lon, lat):
+
+    point = ee.Geometry.Point(float(lon), float(lat))
+    sampledPoint = ee.Feature(village.filterBounds(point).first())
+
+    computedValue = sampledPoint.getInfo()['properties']['OBJECTID']
+
+    selVillage = village.filter(ee.Filter.eq('OBJECTID', computedValue))
+
+    return selVillage

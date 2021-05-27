@@ -40,6 +40,7 @@ var LIBRARY_OBJECT = (function() {
 
     var generate_chart,
         generate_forecast,
+        generate_details,
         init_all,
         init_events,
         init_vars,
@@ -114,28 +115,28 @@ console.log('hjhj');
              }
 names.sort();
            //  console.log(names);
-  var i;
+             var i;
 var myNodelist = document.getElementsByTagName("LI");
 var i;
 for (i = 0; i < names.length; i++) {
     var li = document.createElement("li");
-var a=document.createElement('a');
+    var a = document.createElement('a');
     a.id = centers[i];
- a.innerHTML = names[i];
- 
-a.onclick = function () {	
+    a.innerHTML = names[i];
 
-                            console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
+    a.onclick = function () {
 
-                          //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
-                            //map.getView().setZoom(16);
-                            var view=map.getView();
-                            view.animate({
-                                 center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
-                                 zoom:16
-                            });
-                        }
- li.appendChild(a);
+        console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
+
+        //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
+        //map.getView().setZoom(16);
+        var view = map.getView();
+        view.animate({
+            center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
+            zoom: 16
+        });
+    }
+    li.appendChild(a);
 
     document.getElementById("myUL").appendChild(li);
 
@@ -594,6 +595,28 @@ console.log(b.features);
 
                 }
             });
+             var zhr = ajax_update_database('details',{'lat':proj_coords[1],'lon':proj_coords[0]},'name');
+            zhr.done(function(data) {
+                if("success" in data) {
+                    $('.info').html('');
+                    map.getLayers().item(3).getSource().setUrl("");
+                    var polygon = new ol.geom.Polygon(data.coordinates);
+                    polygon.applyTransform(ol.proj.getTransform('EPSG:4326', 'EPSG:3857'));
+                    var feature = new ol.Feature(polygon);
+
+                    map.getLayers().item(5).getSource().clear();
+                    select_feature_source.addFeature(feature);
+                    generate_details(proj_coords[1],proj_coords[0],data.namePond,data.sup_Pond,data.coordinates,data.nameRegion,data.nameCommune,data.nameArrondissement);
+
+                    $loadingF.addClass('hidden');
+  //                  $("#details-plotter").removeClass('hidden');
+
+                }else{
+                    $('.info').html('<b>Erreur lors du traitement de la demande. Assurez-vous de cliquer sur une fonctionnalité.'+data.error+'</b>');
+                    $('#info').removeClass('hidden');
+                    $loadingF.addClass('hidden');
+                }
+            });
             });
       //       map.on('pointermove', function(evt) {
       //           if (evt.dragging) {
@@ -808,6 +831,12 @@ console.log(b.features);
       });
   };
 
+      generate_details = function(lat,lon,namePond,sup_Pond,coordinates,nameRegion,nameCommune,nameArrondissement){
+        $("#meta-table-details").html('');
+        $("#meta-table-details").append('<tbody><tr><th>Latitude</th><td>'+(lat.toFixed(6))+'</td></tr><tr><th>Longitude</th><td>'+(lon.toFixed(6))+'</td></tr><tr><th>Nom Mare</th><td>'+namePond+'</td></tr><tr><th>Superficie</th><td>'+sup_Pond+'</td></tr><tr><th>Nom région</th><td>'+nameRegion+'</td></tr><tr><th>Nom arrondissement</th><td>'+nameArrondissement+'</td></tr><tr><th>Nom commune</th><td>'+nameCommune+'</td></tr></tbody>');
+        $("#reset").removeClass('hidden');
+
+    };
     //onClick="vector_summer.setVisible(!vector_summer.getVisible());"
 
     init_all = function(){

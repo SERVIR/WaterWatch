@@ -62,6 +62,16 @@ class Waterwatch(TethysAppBase):
                 url='waterwatch/api/getTimeseries',
                 controller='waterwatch.api.api_get_timeseries'
             ),
+            UrlMap(
+                name='details',
+                url='waterwatch/details',
+                controller='waterwatch.ajax_controllers.details'
+            ),
+            UrlMap(
+                name='coucheVillages',
+                url='waterwatch/coucheVillages',
+                controller='waterwatch.ajax_controllers.coucheVillages'
+            ),
         )
 
         return url_maps

@@ -1,4 +1,4 @@
-from .utilities import checkFeature,getMNDWI,forecastFeature,initLayers,pondsList
+from .utilities import *
 import json
 from django.http import JsonResponse
 import datetime
@@ -98,4 +98,52 @@ def mndwi(request):
         except Exception as e:
             return_obj["error"] = "Error Processing Request. Error: "+ str(e)
 
+    return JsonResponse(return_obj)
+def details(request):
+
+    return_obj = {}
+
+    if request.is_ajax() and request.method == 'POST':
+        info = request.POST
+        lat = info.get('lat')
+        lon = info.get('lon')
+
+        try:
+            ponds = filterPond(lon,lat)
+            region = filterRegion(lon,lat)
+            commune = filterCommune(lon,lat)
+            arrondissement = filterArrondissement(lon,lat)
+            namePond = ponds.getInfo()['features'][0]['properties']['Nom']
+            if len(namePond) < 2:
+                namePond = 'Unnamed Pond'
+
+            coordinates = ponds.getInfo()['features'][0]['geometry']['coordinates']
+
+            sup_Pond = ponds.getInfo()['features'][0]['properties']['Sup']
+            nameRegion = region.getInfo()['features'][0]['properties']['nom']
+            nameCommune = commune.getInfo()['features'][0]['properties']['nom']
+            nameArrondissement = arrondissement.getInfo()['features'][0]['properties']['nom']
+
+            return_obj["namePond"] = namePond
+            return_obj["sup_Pond"] = sup_Pond
+            return_obj["coordinates"] = coordinates
+            return_obj["nameRegion"] = nameRegion
+            return_obj["nameCommune"] = nameCommune
+            return_obj["nameArrondissement"] = nameArrondissement
+            return_obj["success"] = "success"
+        except Exception as e:
+            return_obj["error"] = "Error Processing Request. Error: "+ str(e)
+        print("processing complete...")
+
+    return JsonResponse(return_obj)
+
+def coucheVillages(request):
+    return_obj = {}
+    if request.is_ajax() and request.method == 'POST':
+        try:
+            village = checkVillage()
+            return_obj["village"] = village
+            return_obj["success"] = "success"
+        except Exception as e:
+            return_obj["error"] = _("Error Processing Request. Error: ")+ str(e)
     return JsonResponse(return_obj)
