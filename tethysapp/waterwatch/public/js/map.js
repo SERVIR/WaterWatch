@@ -126,13 +126,13 @@ for (i = 0; i < names.length; i++) {
 
     a.onclick = function () {
 
-        console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
+        //console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
 
         //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
         //map.getView().setZoom(16);
         var view = map.getView();
         view.animate({
-            center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
+            center: ol.proj.transform([parseFloat(this.id.split(',')[1]), parseFloat(this.id.split(',')[0])], 'EPSG:4326', 'EPSG:3857'),
             zoom: 16
         });
     }
