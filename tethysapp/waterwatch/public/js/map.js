@@ -94,7 +94,7 @@ console.log('hjhj');
              for (j = 0; j < pondsList.length; j++) {
                  if (pondsList[j]['geometry']['coordinates']) {
                      var nn = pondsList[j]['geometry']['coordinates'][0];
-                 //    console.log(nn)
+                  //   console.log(nn)
 
                      var name = pondsList[j]['properties']['Nom'];
 
@@ -107,11 +107,21 @@ console.log('hjhj');
                          yy = yy + nn[k][1];
 
                      }
-                     var center = [ yy / nn.length,xx / nn.length];
+                     var center = [ xx / nn.length,yy / nn.length];
+                     var c;
+                       var zhr = ajax_update_database('details',{'lat':center[1],'lon':center[0]},'name');
+            zhr.done(function(data) {
+                if ("success" in data) {
+                    c=data.namePond;
+                    console.log(data.namePond);
+
+                }
+            });
+            console.log(c);
 
 
                      if (center[0] && center[1] && !names.includes(name)) {
-                 //         console.log(center);
+                      //    console.log(center);
                   //        console.log(name);
                          centers.push(center);
                          names.push(name);
@@ -136,9 +146,9 @@ for (i = 0; i < names.length; i++) {
         //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
         //map.getView().setZoom(16);
         var view = map.getView();
-
+        console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
         view.animate({
-            center: ol.proj.transform([parseFloat(this.id.split(',')[1]), parseFloat(this.id.split(',')[0])], 'EPSG:4326', 'EPSG:3857'),
+            center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
             zoom: 16
         });
     }
