@@ -106,9 +106,9 @@ console.log('hjhj');
                          yy = yy + nn[k][1];
 
                      }
-                     var center = nn[nn.length/2];
-                  //   console.log(center)
-                     if ( !names.includes(name)) {
+                     var center = [nn[0][1],nn[0][0]];
+                     console.log(center)
+                     if (center[0] && center[1] && !names.includes(name)) {
                          centers.push(center);
                          names.push(name);
                      }
