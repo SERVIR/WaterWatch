@@ -108,16 +108,7 @@ console.log('hjhj');
 
                      }
                      var center = [ xx / nn.length,yy / nn.length];
-                     var c;
-                       var zhr = ajax_update_database('details',{'lat':center[1],'lon':center[0]},'name');
-            zhr.done(function(data) {
-                if ("success" in data) {
-                    c=data.namePond;
-                    console.log(data.namePond);
 
-                }
-            });
-            console.log(c);
 
 
                      if (center[0] && center[1] && !names.includes(name)) {
@@ -146,7 +137,16 @@ for (i = 0; i < names.length; i++) {
         //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
         //map.getView().setZoom(16);
         var view = map.getView();
-        console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
+                            var c;
+                       var zhr = ajax_update_database('details',{'lat':parseFloat(this.id.split(',')[1]),'lon':parseFloat(this.id.split(',')[0])},'name');
+            zhr.done(function(data) {
+                if ("success" in data) {
+                    c=data.namePond;
+                    console.log(data.namePond);
+
+                }
+            });
+            console.log(c);
         view.animate({
             center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
             zoom: 16
