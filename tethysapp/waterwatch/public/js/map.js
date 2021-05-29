@@ -543,6 +543,11 @@ console.log(b.features);
             $("#plotter").addClass('hidden');
             $("#forecast-plotter").addClass('hidden');
             //$tsplotModal.modal('show');
+
+            		    var myGeoJSON1 = [];
+		    var myGeoJSON2 = [];
+			var mareSelect,buffered;
+			var $elements;
             var xhr = ajax_update_database('timeseries',{'lat':proj_coords[1],'lon':proj_coords[0]},'name');
             xhr.done(function(data) {
                 if("success" in data) {
@@ -552,6 +557,43 @@ console.log(b.features);
                     var polygon = new ol.geom.Polygon(data.coordinates);
                     polygon.applyTransform(ol.proj.getTransform('EPSG:4326', 'EPSG:3857'));
                     var feature = new ol.Feature(polygon);
+
+                    				mareSelect= turf.polygon(data.coordinates);
+
+					buffered = turf.buffer(mareSelect, 10, {units: 'kilometers'});
+					var villagehr = ajax_update_database('coucheVillages');
+					villagehr.done(function(data2) {
+							for (var iter = 0; iter < data2.village.length; iter++) {
+								var buff1= turf.feature(data2.village[iter].geometry, data2.village[iter].properties);
+								if(turf.booleanWithin(buff1, buffered)){
+									var ptsWithin = 'Village :'+data2.village[iter].properties['Toponymie']+'// Population '+data2.village[iter].properties['EffectifPo'];
+									myGeoJSON1.push(buff1);
+									myGeoJSON2.push(ptsWithin);
+									var x = document.createElement("p");
+									var x1 = document.createElement("b");
+									var t = document.createTextNode(data2.village[iter].properties['Toponymie'] );
+									var t1 = document.createTextNode(" avec  "+data2.village[iter].properties['EffectifPo']+" habitants");
+									x1.appendChild(t);
+									x.appendChild(x1);
+									x.appendChild(t1);
+									var newElement = $('<div>', { text: data2.village[iter].properties['Toponymie'] +'  avec  '+data2.village[iter].properties['EffectifPo']+' habitants'});
+									if( $elements ) {
+										$elements = $($elements).add(x);
+									}else{
+										$elements = $().add(x);
+									}
+								}
+							}
+							$("#meta-table-village").html('');
+							var h = document.createElement("h2");
+							var titre = document.createTextNode("Villages à 10 km de la mare de "+data.name);
+							h.appendChild(titre);
+							$("#meta-table-village").append(h);
+							$("#meta-table-village").append($elements);
+							$("#reset").removeClass('hidden');
+
+					});
+					var buffOut1 = turf.featureCollection(myGeoJSON1);
 
                     map.getLayers().item(5).getSource().clear();
                     select_feature_source.addFeature(feature);
