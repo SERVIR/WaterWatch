@@ -7,7 +7,7 @@ import random
 import datetime, time
 import numpy as np
 from . import config
-
+from django.http import JsonResponse
 try:
     ee.Initialize()
 except:
@@ -532,7 +532,26 @@ def initLayers():
 
 def pondsList():
     xx = ponds.getInfo()
-    return xx['features'] #np.unique([i['properties']['Nom'] for i in xx['features'] if i['properties']['Nom']]).tolist()
+    names=[]
+    centers=[]
+    return_obj = {}
+    for feature in xx['features']:
+        if feature['properties']['Nom']:
+            name=feature['properties']['Nom']
+            if len(feature['geometry']['coordinates'][0][0])>2:
+                # print(len(feature['geometry']['coordinates'][0][0]))
+                points= feature['geometry']['coordinates'][0][0]
+            else:
+                # print(len(feature['geometry']['coordinates'][0][0]))
+                points = feature['geometry']['coordinates'][0]
+            x = [p[0] for p in points if p[0] and p[1]]
+            y = [p[1] for p in points if p[0] and p[1]]
+            centroid = [sum(x) / len(points), sum(y) / len(points)]
+            if name not in names:
+                names.append(str(name))
+                centers.append(centroid)
+    return names,centers
+    #return xx['features'] #np.unique([i['properties']['Nom'] for i in xx['features'] if i['properties']['Nom']]).tolist()
 
 def regionLayers():
     return region

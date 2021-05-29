@@ -88,39 +88,37 @@ console.log('hjhj');
          if ("success" in data) {
              var j;
              var obj = [];
-             var centers = [];
-             var names = [];
-             var pondsList = data['ponds'];
-             for (j = 0; j < pondsList.length; j++) {
-                 if (pondsList[j]['geometry']['coordinates']) {
-                     var nn = pondsList[j]['geometry']['coordinates'][0];
-                  //   console.log(nn)
-
-                     var name = pondsList[j]['properties']['Nom'];
-
-                     if (name.length < 2) name = 'Unnamed pond';
-                     var k;
-                     var xx = 0, yy = 0;
-                     for (k = 0; k < nn.length; k++) {
-
-                         xx = xx + nn[k][0];
-                         yy = yy + nn[k][1];
-
-                     }
-                     var center = [ xx / nn.length,yy / nn.length];
-
-
-
-                     if (center[0] && center[1] && !names.includes(name)) {
-                      //    console.log(center);
-                  //        console.log(name);
-                         centers.push(center);
-                         names.push(name);
-                     }
-                 }
-             }
-names.sort();
-           //  console.log(names);
+             console.log(data);
+             var centers = data['centers'];
+             var names = data['names'];
+             // var pondsList = data['ponds'];
+             // for (j = 0; j < pondsList.length; j++) {
+             //     if (pondsList[j]['geometry']['coordinates']) {
+             //         var nn = pondsList[j]['geometry']['coordinates'][0];
+             //      //   console.log(nn)
+             //
+             //         var name = pondsList[j]['properties']['Nom'];
+             //
+             //         if (name.length < 2) name = 'Unnamed pond';
+             //         var k;
+             //         var xx = 0, yy = 0;
+             //         for (k = 0; k < nn.length; k++) {
+             //
+             //             xx = xx + nn[k][0];
+             //             yy = yy + nn[k][1];
+             //
+             //         }
+             //         var center = [ xx / nn.length,yy / nn.length];
+             //
+             //
+             //
+             //         if (center[0] && center[1] && !names.includes(name)) {
+             //
+             //             centers.push(center);
+             //             names.push(name);
+             //         }
+             //     }
+             // }
              var i;
 var myNodelist = document.getElementsByTagName("LI");
 var i;
@@ -138,7 +136,7 @@ for (i = 0; i < names.length; i++) {
         //map.getView().setZoom(16);
         var view = map.getView();
                             var c;
-                       var zhr = ajax_update_database('details',{'lat':parseFloat(this.id.split(',')[1]),'lon':parseFloat(this.id.split(',')[0])},'name');
+                       var zhr = ajax_update_database('details',{'lat':parseFloat(this.id.split(',')[0]),'lon':parseFloat(this.id.split(',')[1])},'name');
             zhr.done(function(data) {
                 if ("success" in data) {
                     c=data.namePond;

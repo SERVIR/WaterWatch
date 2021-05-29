@@ -23,13 +23,17 @@ def getPondsUrl(request):
 def getPondsList(request):
 
     return_obj = {}
+    centers=[]
+    names=[]
 
 
     if request.is_ajax() and request.method == 'POST':
 
         try:
-            x= pondsList()
-            return_obj["ponds"]=x
+            names,centers= pondsList()
+            return_obj["centers"]=centers
+            return_obj["names"]=names
+
             return_obj["success"] = "success"
 
         except Exception as e:
