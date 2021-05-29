@@ -9,12 +9,11 @@ import numpy as np
 from . import config
 from django.http import JsonResponse
 try:
-    ee.Initialize()
-except:
     credentials = ee.ServiceAccountCredentials('gtondapu@airquality-255511.iam.gserviceaccount.com',
                                                '/home/tethys/waterwatch.json')
     ee.Initialize(credentials)
-finally:
+except:
+    ee.Initialize()
     print("cannot initialize earth engine")
 
 
@@ -550,6 +549,8 @@ def pondsList():
             if name not in names:
                 names.append(str(name))
                 centers.append(centroid)
+    names, centers = (list(t) for t in zip(*sorted(zip( names,centers), reverse=False)))
+
     return names,centers
     #return xx['features'] #np.unique([i['properties']['Nom'] for i in xx['features'] if i['properties']['Nom']]).tolist()
 
