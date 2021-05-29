@@ -106,63 +106,64 @@ console.log('hjhj');
                          yy = yy + nn[k][1];
 
                      }
-                     var center = [xx / nn.length, yy / nn.length];
-                     if (center[0] && center[1] && !names.includes(name)) {
+                     var center = nn[nn.length/2];
+                  //   console.log(center)
+                     if ( !names.includes(name)) {
                          centers.push(center);
                          names.push(name);
                      }
                  }
              }
-names.sort();
-           //  console.log(names);
+             names.sort();
+             //  console.log(names);
              var i;
-var myNodelist = document.getElementsByTagName("LI");
-var i;
-for (i = 0; i < names.length; i++) {
-    var li = document.createElement("li");
-    var a = document.createElement('a');
-    a.id = centers[i];
-    a.innerHTML = names[i];
+             var myNodelist = document.getElementsByTagName("LI");
+             var i;
+             for (i = 0; i < names.length; i++) {
+                 var li = document.createElement("li");
+                 var a = document.createElement('a');
+                 a.id = centers[i];
+                 a.innerHTML = names[i];
 
-    a.onclick = function () {
+                 a.onclick = function () {
 
-        //console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
+                     //console.log([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])]);
 
-        //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
-        //map.getView().setZoom(16);
-        var view = map.getView();
-        view.animate({
-            center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
-            zoom: 16
-        });
-    }
-    li.appendChild(a);
+                     //  map.getView().setCenter(ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
+                     //map.getView().setZoom(16);
+                     var view = map.getView();
+                     view.animate({
+                         center: ol.proj.transform([parseFloat(this.id.split(',')[0]), parseFloat(this.id.split(',')[1])], 'EPSG:4326', 'EPSG:3857'),
+                         zoom: 16
+                     });
+                 }
+                 li.appendChild(a);
 
-    document.getElementById("myUL").appendChild(li);
+                 document.getElementById("myUL").appendChild(li);
 
-}
-  
+             }
 
-                /*for(i=0;i<names.length;i++) {
-                    var newbox = document.createElement('input');
-                    newbox.type = "radio";
-                    newbox.name = "radiogroup";
-                    newbox.value = centers[i];
-                    newbox.onclick = function () {
-                        if (this.checked) {
-                            console.log([parseFloat(this.value.split(',')[0]), parseFloat(this.value.split(',')[1])]);
 
-                            map.getView().setCenter(ol.proj.transform([parseFloat(this.value.split(',')[0]), parseFloat(this.value.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
-                            map.getView().setZoom(16);
-                        }
-                    }
-                    var lbl = document.createElement('label');
-                    lbl.innerHTML = names[i];
-                    document.getElementById('cboxes').appendChild(newbox);
-                    document.getElementById('cboxes').appendChild(lbl);
-                    document.getElementById('cboxes').appendChild(document.createElement('br'));
-                }*/
-            // autocomplete(document.getElementById("myInput"), names);
+             /*for(i=0;i<names.length;i++) {
+                 var newbox = document.createElement('input');
+                 newbox.type = "radio";
+                 newbox.name = "radiogroup";
+                 newbox.value = centers[i];
+                 newbox.onclick = function () {
+                     if (this.checked) {
+                         console.log([parseFloat(this.value.split(',')[0]), parseFloat(this.value.split(',')[1])]);
+
+                         map.getView().setCenter(ol.proj.transform([parseFloat(this.value.split(',')[0]), parseFloat(this.value.split(',')[1])], 'EPSG:4326', 'EPSG:3857'));
+                         map.getView().setZoom(16);
+                     }
+                 }
+                 var lbl = document.createElement('label');
+                 lbl.innerHTML = names[i];
+                 document.getElementById('cboxes').appendChild(newbox);
+                 document.getElementById('cboxes').appendChild(lbl);
+                 document.getElementById('cboxes').appendChild(document.createElement('br'));
+             }*/
+             // autocomplete(document.getElementById("myInput"), names);
          }
      });
 
