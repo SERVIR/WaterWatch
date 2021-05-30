@@ -1,2 +1,2 @@
-EE_SERVICE_ACCOUNT = 'gtondapu@airquality-255511.iam.gserviceaccount.com'
-EE_SECRET_KEY = '/home/tethys/Downloads/waterwatch.json'
+EE_SERVICE_ACCOUNT = 'Service_account_email'
+EE_SECRET_KEY = 'Path_to_json'
