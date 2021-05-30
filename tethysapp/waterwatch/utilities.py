@@ -9,8 +9,8 @@ import numpy as np
 from . import config
 from django.http import JsonResponse
 try:
-    credentials = ee.ServiceAccountCredentials('gtondapu@airquality-255511.iam.gserviceaccount.com',
-                                               '/home/tethys/waterwatch.json')
+    credentials = ee.ServiceAccountCredentials(config.EE_SERVICE_ACCOUNT,
+                                               config.EE_SECRET_KEY)
     ee.Initialize(credentials)
 except:
     ee.Initialize()

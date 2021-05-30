@@ -10,3 +10,4 @@
 *.idea
 build*
 dist*
+tethysapp/waterwatch/config.py
