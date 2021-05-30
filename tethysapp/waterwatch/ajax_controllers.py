@@ -12,7 +12,7 @@ def getPondsUrl(request):
     if request.is_ajax() and request.method == 'POST':
 
         try:
-            return_obj["url"] = initLayers()
+            return_obj["url"]= initLayers()
             return_obj["success"] = "success"
 
         except Exception as e:

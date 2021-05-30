@@ -30,7 +30,7 @@ var LIBRARY_OBJECT = (function() {
         water_source,
         water_layer,
         true_source,
-        true_layer;
+        true_layer,mndwi_mapid;
 
 
     /************************************************************************
@@ -179,6 +179,7 @@ var LIBRARY_OBJECT = (function() {
 
         //ponds_mapid = $layers_element.attr('data-ponds-mapid');
         //ponds_token = $layers_element.attr('data-ponds-token');
+        //    mndwi_mapid = $layers_element.attr('data-mndwi-mapid');
         $chartModal = $("#chart-modal");
     };
 
@@ -942,17 +943,17 @@ var LIBRARY_OBJECT = (function() {
             }
         });
 
-        $('#mndwi_toggle').change(function () {
+        $('#select_mndwi_layer').change(function () {
             // this will contain a reference to the checkbox
             if (this.checked) {
 
-                map.getLayers().item(4).setVisible(true);
+                map.getLayers().item(21).setVisible(true);
             } else {
-                map.getLayers().item(4).setVisible(false);
+                map.getLayers().item(21).setVisible(false);
             }
         });
 
-        $('#ponds_toggle').change(function () {
+        $('#ponds_layer').change(function () {
             // this will contain a reference to the checkbox
             if (this.checked) {
 

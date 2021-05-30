@@ -14,8 +14,6 @@ try:
     ee.Initialize(credentials)
 except:
     ee.Initialize()
-    print("cannot initialize earth engine")
-
 
 def addArea(feature):
     return feature.set('area', feature.area());
