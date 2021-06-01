@@ -11,9 +11,9 @@ from django.http import JsonResponse
 try:
     credentials = ee.ServiceAccountCredentials(config.EE_SERVICE_ACCOUNT,
                                                config.EE_SECRET_KEY)
-    ee.Initialize()
-except:
     ee.Initialize(credentials)
+except:
+    ee.Initialize()
 
 def addArea(feature):
     return feature.set('area', feature.area());
@@ -519,8 +519,9 @@ regionImgID = region.getMapId()
 arrondissementImgID = arrondissement.getMapId()
 communeImgID = commune.getMapId()
 villageImgID = village.getMapId()
+test=mergedCollection.select('mndwi_water').median().clip(area_senegal)
 params={'min':0.05,'max':-0.2,'palette':'#d3d3d3,#84adff,#9698d1,#0000cc'}
-mndwiImg = mergedCollection.select('mndwi_water').median().clip(area_senegal).getMapId(params)
+mndwiImg = test.getMapId(params)
 gfs = ee.ImageCollection('NOAA/GFS0P25')
 cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'], ['precip'])
 elv = ee.Image('USGS/SRTMGL1_003')
