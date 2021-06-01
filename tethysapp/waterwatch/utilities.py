@@ -11,9 +11,9 @@ from django.http import JsonResponse
 try:
     credentials = ee.ServiceAccountCredentials(config.EE_SERVICE_ACCOUNT,
                                                config.EE_SECRET_KEY)
-    ee.Initialize(credentials)
-except:
     ee.Initialize()
+except:
+    ee.Initialize(credentials)
 
 def addArea(feature):
     return feature.set('area', feature.area());
