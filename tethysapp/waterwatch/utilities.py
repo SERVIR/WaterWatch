@@ -481,18 +481,21 @@ zScoreThresh = -0.8;
 shadowSumThresh = 0.35;
 cloudThresh = 10
 mergedCollection = ee.ImageCollection("projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds")
-mndwiCollection = mergedCollection.map(calcWaterIndex)
+#mndwiCollection = mergedCollection.map(calcWaterIndex)
 palette = {'palette': 'yellow,green,gray'}
 
 
 def cliip(image):
     # Crop by table extension
     return image.clip(studyArea)
+def cliip1(image):
+    # Crop by table extension
+    return image.clip(area_senegal)
 
 
 img = mergedCollection.map(cliip)
 # img = mergedCollection.median().clip(studyArea)
-mndwiImg = mndwiCollection.map(cliip)
+#mndwiImg = mndwiCollection.map(cliip)
 waterCollection = ee.ImageCollection("projects/servir-wa/services/ephemeral_water_ferlo/processed_ponds")
 # ee.Image(waterCollection.select('water').mosaic())
 palette = {'palette': 'yellow,green,gray'}
@@ -508,6 +511,7 @@ Pimage = ponds_cls.reduceToImage(
     properties=['pondCls'],
     reducer=ee.Reducer.first()
 )
+
 visParams = {'min': 0, 'max': 3, 'palette': 'red,yellow,green,gray'}
 
 # pondsImgID = Pimage.getMapId(visParams)
@@ -515,12 +519,13 @@ regionImgID = region.getMapId()
 arrondissementImgID = arrondissement.getMapId()
 communeImgID = commune.getMapId()
 villageImgID = village.getMapId()
-
-
+params={'min':0.05,'max':-0.2,'palette':'#d3d3d3,#84adff,#9698d1,#0000cc'}
+mndwiImg = mergedCollection.select('mndwi_water').median().clip(area_senegal).getMapId(params)
 gfs = ee.ImageCollection('NOAA/GFS0P25')
 cfs = ee.ImageCollection('NOAA/CFSV2/FOR6H').select(['Precipitation_rate_surface_6_Hour_Average'], ['precip'])
 elv = ee.Image('USGS/SRTMGL1_003')
-
+def initMndwi():
+    return mndwiImg['tile_fetcher'].url_format
 
 def initLayers():
     pondsImgID = Pimage.getMapId(visParams)
