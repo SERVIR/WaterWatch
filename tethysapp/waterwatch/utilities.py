@@ -472,6 +472,7 @@ countries = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017')
 area_senegal = ee.FeatureCollection(countries).filter(ee.Filter.eq('country_na','Senegal'));
 village = ee.FeatureCollection('users/satigebelal/Village');
 today = time.strftime("%Y-%m-%d")
+precipScale = ee.Image(1).divide(ee.Image(1e3))
 
 iniTime = ee.Date('2015-01-01')
 endTime = ee.Date(today)
