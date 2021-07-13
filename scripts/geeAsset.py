@@ -286,8 +286,8 @@ WATER_THRESHS = {
 }
 
 # change dates to range to process
-iniDate = ee.Date('2021-04-23')
-today = ee.Date('2021-05-27')
+iniDate = ee.Date('2021-05-28')
+today = ee.Date('2021-07-12')
 endDate = ee.Date(today)
 
 # You will want to use ur features instead
