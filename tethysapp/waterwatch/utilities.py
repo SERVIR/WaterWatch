@@ -371,8 +371,9 @@ class fClass(object):
 
         # calculate initial conditions
         A = ee.Image(self.pArea).multiply(self.initial)
-        hInit = A.divide(self.So).pow(self.h0.divide(self.alpha))
-        self.Vo = self.So.multiply(self.h0).divide(self.alpha.add(1))
+        hInit = ee.Image(A.divide(self.So).pow(self.h0.divide(self.alpha)))
+        self.Vo = (self.So.multiply(self.h0)).divide(self.alpha.add(1))
+        vInit = ee.Image(self.Vo.multiply(hInit.divide(self.h0).pow(alpha.add(1))))
 
         precipData = gfs.filterDate(modelDate, modelDate.advance(1, 'hour')) \
             .filterMetadata('forecast_hours', 'greater_than', 0) \
@@ -385,7 +386,7 @@ class fClass(object):
         # set model start with t-1 forcing
         first = ee.Image(cfs.filterDate(modelDate.advance(-1, 'day'), modelDate).select(['precip']).sum()) \
             .multiply(precipScale).addBands(initIap) \
-            .addBands(A.multiply(hInit)).addBands(A).addBands(hInit) \
+            .addBands(vInit).addBands(A).addBands(hInit) \
             .rename(['precip', 'Iap', 'vol', 'area', 'height']).clip(studyArea) \
             .set('system:time_start', modelDate.advance(-12, 'hour').millis()).float()
 
