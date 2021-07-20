@@ -373,7 +373,7 @@ class fClass(object):
         A = ee.Image(self.pArea).multiply(self.initial)
         hInit = ee.Image(A.divide(self.So).pow(self.h0.divide(self.alpha)))
         self.Vo = (self.So.multiply(self.h0)).divide(self.alpha.add(1))
-        vInit = ee.Image(self.Vo.multiply(hInit.divide(self.h0).pow(alpha.add(1))))
+        vInit = ee.Image(self.Vo.multiply(hInit.divide(self.h0).pow(self.alpha.add(1))))
 
         precipData = gfs.filterDate(modelDate, modelDate.advance(1, 'hour')) \
             .filterMetadata('forecast_hours', 'greater_than', 0) \
@@ -404,7 +404,7 @@ class fClass(object):
         pastAr = past.select('area')
         pastHt = past.select('height')
         pastVl = past.select('vol')
-        nowPr = img.select('precip').clip(studyArea)
+        nowPr = img.select('precip') #.clip(studyArea)
         date = ee.Date(img.get('system:time_start'))
 
         # change in volume model
