@@ -67,28 +67,7 @@ var LIBRARY_OBJECT = (function() {
         }
 
     }
-    if (localStorage['ponds_url']) {
-        var ponds_url = JSON.parse(localStorage['ponds_url']);
-        if (new Date(ponds_url.time_created) < new Date().setDate(new Date().getDate() - 1)) {
-            ajax_update_database("get-ponds-url", {}).done(function (data) {
-                if ("success" in data) {
-                    localStorage.setItem('ponds_url', JSON.stringify({
-                        'url': data['url'],
-                        'time_created': new Date().toString()
-                    }))
-                }
-            });
-        }
-    } else {
-        ajax_update_database("get-ponds-url", {}).done(function (data) {
-            if ("success" in data) {
-                localStorage.setItem('ponds_url', JSON.stringify({
-                    'url': data['url'],
-                    'time_created': new Date().toString()
-                }))
-            }
-        });
-    }
+
     ajax_update_database("get-ponds-list", {}).done(function (data) {
         if ("success" in data) {
             var j;
@@ -397,15 +376,38 @@ var LIBRARY_OBJECT = (function() {
         //     })
         //   }); //
 
-        var ponds_layer = new ol.layer.Tile({
-            source: new ol.source.XYZ({
-                url: JSON.parse(localStorage['ponds_url']).url //"https://earthengine.googleapis.com/map/"+ponds_mapid+"/{z}/{x}/{y}?token="+ponds_token
-            })
-        });
+        var ponds_layer = new ol.layer.Tile({});
 
-        console.log(ponds_layer.getSource());
-        var b = ponds_layer.getSource();
-        console.log(b.features);
+
+        if (localStorage['ponds_url']) {
+            var ponds_url = JSON.parse(localStorage['ponds_url']);
+            if (new Date(ponds_url.time_created) < new Date().setDate(new Date().getDate() - 1)) {
+                ajax_update_database("get-ponds-url", {}).done(function (data) {
+                    if ("success" in data) {
+                        localStorage.setItem('ponds_url', JSON.stringify({
+                            'url': data['url'],
+                            'time_created': new Date().toString()
+                        }));
+                        ponds_layer.setSource(new ol.source.XYZ({
+                            url: data['url']
+                        }));
+                    }
+                });
+            }
+        } else {
+            ajax_update_database("get-ponds-url", {}).done(function (data) {
+                if ("success" in data) {
+                    localStorage.setItem('ponds_url', JSON.stringify({
+                        'url': data['url'],
+                        'time_created': new Date().toString()
+                    }));
+                    ponds_layer.setSource(new ol.source.XYZ({
+                        url: data['url']
+                    }));
+                }
+            });
+        }
+
         select_feature_source = new ol.source.Vector();
         select_feature_layer = new ol.layer.Vector({
             source: select_feature_source,
