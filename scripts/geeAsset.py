@@ -267,7 +267,9 @@ BIAS = ee.Image.constant([-0.00411, -0.00093, 0.00094, -0.0001, -0.0015, -0.0012
 S2_CLOUD_PROBA_COLL = ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
 
 # define the Landat and Sentinel2 surface reflectance products
-LC8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR')
+LC8_1 = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR')
+LC8_2 = ee.ImageCollection('LANDSAT/LC08/C01/T2_SR'
+LC8 = ee.ImageCollection(LC8_1.merge(LC8_2))
 S2 = ee.ImageCollection('COPERNICUS/S2_SR')
 
 # dictionary containing the threshold for different water indices
