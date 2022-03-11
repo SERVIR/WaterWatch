@@ -268,8 +268,8 @@ S2_CLOUD_PROBA_COLL = ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
 
 # define the Landat and Sentinel2 surface reflectance products
 LC8_1 = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR')
-LC8_2 = ee.ImageCollection('LANDSAT/LC08/C01/T2_SR'
-LC8 = ee.ImageCollection(LC8_1.merge(LC8_2))
+LC8_2 = ee.ImageCollection('LANDSAT/LC08/C01/T2_SR')
+LC = ee.ImageCollection(LC8_1.merge(LC8_2))
 S2 = ee.ImageCollection('COPERNICUS/S2_SR')
 
 # dictionary containing the threshold for different water indices
@@ -300,7 +300,7 @@ geometry = ee.Geometry.Polygon([[[-15.866,14.193],
                                  [-15.866,14.193]]])
 
 # preprocess and merge the landsat8 and sentinel2 data for a spatial/temporal domain
-mergedCollection = mergeCollections(LC8, S2, geometry, iniDate, endDate).sort('system:time_start', False)
+mergedCollection = mergeCollections(LC, S2, geometry, iniDate, endDate).sort('system:time_start', False)
 
 # apply the multi-threshod water mapping process
 processedCollection =  mergedCollection.map(watermapping)
