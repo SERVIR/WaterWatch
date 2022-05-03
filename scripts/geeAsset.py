@@ -270,7 +270,7 @@ def watermapping(img):
 
 
 def process_data(geometry, asset_id, region_name):
-    print("running: " + region_name + " from: " + iniDate + " to " + endDate)
+    print("running: " + region_name + " from: " + iniDate.format('YYYY-mm-dd') + " to " + endDate.format('YYYY-mm-dd'))
     mergedCollection = mergeCollections(LC, S2, geometry, iniDate, endDate).sort('system:time_start', False)
     # apply the multi-threshod water mapping process
     processedCollection = mergedCollection.map(watermapping)
