@@ -11,3 +11,4 @@
 build*
 dist*
 tethysapp/waterwatch/config.py
+region_info.json
