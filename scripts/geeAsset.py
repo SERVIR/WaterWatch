@@ -269,7 +269,8 @@ def watermapping(img):
     return out
 
 
-def process_data(geometry, asset_id):
+def process_data(geometry, asset_id, region_name):
+    print("running: " + region_name + " from: " + iniDate + " to " + endDate)
     mergedCollection = mergeCollections(LC, S2, geometry, iniDate, endDate).sort('system:time_start', False)
     # apply the multi-threshod water mapping process
     processedCollection = mergedCollection.map(watermapping)
@@ -351,6 +352,6 @@ iniDate = ee.Date((datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d'))  
 endDate = ee.Date(ee.Date(datetime.today().strftime('%Y-%m-%d')))  # today
 
 for region in region_info["regions"]:
-    process_data(ee.Geometry.Polygon(region['geometry']), region['gee_asset_id'])
+    process_data(ee.Geometry.Polygon(region['geometry']), region['gee_asset_id'], region['name'])
 
 # preprocess and merge the landsat8 and sentinel2 data for a spatial/temporal domain
