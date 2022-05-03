@@ -351,6 +351,6 @@ iniDate = ee.Date((datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d'))  
 endDate = ee.Date(ee.Date(datetime.today().strftime('%Y-%m-%d')))  # today
 
 for region in region_info["regions"]:
-    process_data(region['geometry'], region['gee_asset_id'])
+    process_data(ee.Geometry.Polygon(region['geometry']), region['gee_asset_id'])
 
 # preprocess and merge the landsat8 and sentinel2 data for a spatial/temporal domain
