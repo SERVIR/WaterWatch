@@ -347,7 +347,7 @@ region_info = json.load(f)
 f.close()
 
 # change dates to range to process
-iniDate = ee.Date((datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d'))  # 1 week prior
+iniDate = ee.Date((datetime.today() - timedelta(days=7)).strftime('%Y-%m-%d'))  # 1 week prior
 
 endDate = ee.Date(ee.Date(datetime.today().strftime('%Y-%m-%d')))  # today
 
