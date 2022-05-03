@@ -5,8 +5,14 @@ from ee.batch import Export
 from datetime import date
 from datetime import datetime, timedelta
 import json
+from tethysapp.waterwatch import config
 
-ee.Initialize()
+try:
+    credentials = ee.ServiceAccountCredentials(config.EE_SERVICE_ACCOUNT,
+                                               config.EE_SECRET_KEY)
+    ee.Initialize(credentials)
+except:
+    ee.Initialize()
 
 
 def landsatQaMask(img):
